@@ -1,0 +1,79 @@
+<svg width="1440" height="900" viewBox="0 0 1440 900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="grid" width="16" height="16" patternUnits="userSpaceOnUse">
+      <path d="M16 0H0V16" fill="none" stroke="#E5E7EB" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="run" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7AA2F7"/>
+      <stop offset="100%" stop-color="#6E6BFF"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#9CA3AF"/>
+    </marker>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.12)"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1440" height="900" fill="#F7F8FA"/>
+  <!-- Top Bar -->
+  <rect x="0" y="0" width="1440" height="56" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <text x="24" y="34" font-family="Inter, system-ui" font-size="16" font-weight="600" fill="#111827">Canvas Project • Saved</text>
+  <rect x="1276" y="12" rx="8" ry="8" width="72" height="32" fill="#6E6BFF"/>
+  <text x="1296" y="33" font-family="Inter" font-size="13" font-weight="600" fill="#FFFFFF">Export</text>
+  <rect x="1356" y="12" rx="8" ry="8" width="72" height="32" fill="#111827"/>
+  <text x="1377" y="33" font-family="Inter" font-size="13" font-weight="600" fill="#FFFFFF">Settings</text>
+
+  <!-- Left Toolbar -->
+  <rect x="0" y="56" width="56" height="844" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <circle cx="28" cy="100" r="12" fill="#6E6BFF"/>
+  <rect x="16" y="140" rx="6" ry="6" width="24" height="24" fill="#111827"/>
+  <rect x="16" y="180" rx="6" ry="6" width="24" height="24" fill="#111827"/>
+
+  <!-- Canvas Area with Grid -->
+  <rect x="56" y="56" width="1384" height="844" fill="url(#grid)"/>
+
+  <!-- Node A (left) -->
+  <g filter="url(#shadow)">
+    <rect x="220" y="200" rx="12" ry="12" width="420" height="320" fill="#FFFFFF" stroke="#E5E7EB"/>
+    <rect x="220" y="200" rx="12" ry="12" width="420" height="48" fill="#FFFFFF"/>
+    <text x="240" y="230" font-family="Inter" font-size="14" font-weight="600" fill="#111827">调研节点</text>
+    <rect x="368" y="212" rx="6" ry="6" width="66" height="24" fill="#EEF2FF" stroke="#C7D2FE"/>
+    <text x="378" y="228" font-family="Inter" font-size="12" font-weight="600" fill="#4F46E5">gpt‑4o</text>
+    <!-- body placeholder -->
+    <rect x="236" y="260" rx="8" ry="8" width="388" height="160" fill="#F3F4F6"/>
+    <rect x="236" y="430" rx="8" ry="8" width="388" height="56" fill="#FFFFFF" stroke="#E5E7EB"/>
+    <text x="246" y="464" font-family="Inter" font-size="12" fill="#6B7280">在此输入提示词… ⌘⏎ 运行</text>
+    <!-- ports -->
+    <circle cx="220" cy="360" r="6" fill="#9CA3AF"/>
+    <circle cx="640" cy="360" r="6" fill="#9CA3AF"/>
+  </g>
+
+  <!-- Node B (right, running) -->
+  <g filter="url(#shadow)">
+    <rect x="760" y="280" rx="12" ry="12" width="420" height="320" fill="#FFFFFF" stroke="#A5B4FC"/>
+    <rect x="760" y="280" rx="12" ry="12" width="420" height="4" fill="url(#run)"/>
+    <rect x="760" y="280" rx="12" ry="12" width="420" height="48" fill="#FFFFFF"/>
+    <text x="780" y="310" font-family="Inter" font-size="14" font-weight="600" fill="#111827">总结节点（运行中）</text>
+    <rect x="928" y="292" rx="6" ry="6" width="66" height="24" fill="#EEF2FF" stroke="#C7D2FE"/>
+    <text x="938" y="308" font-family="Inter" font-size="12" font-weight="600" fill="#4F46E5">gpt‑4o</text>
+    <!-- body placeholder -->
+    <rect x="776" y="340" rx="8" ry="8" width="388" height="160" fill="#F3F4F6"/>
+    <rect x="776" y="510" rx="8" ry="8" width="388" height="56" fill="#FFFFFF" stroke="#E5E7EB"/>
+    <text x="786" y="544" font-family="Inter" font-size="12" fill="#6B7280">总结提炼中…</text>
+    <!-- ports -->
+    <circle cx="760" cy="440" r="6" fill="#9CA3AF"/>
+    <circle cx="1180" cy="440" r="6" fill="#9CA3AF"/>
+  </g>
+
+  <!-- Edge from A to B -->
+  <path d="M646 360 C 700 360, 720 440, 754 440" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Mini Map (P1 style) -->
+  <rect x="1260" y="840" rx="10" ry="10" width="120" height="60" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <rect x="1276" y="852" width="40" height="20" fill="#E5E7EB" rx="4"/>
+  <rect x="1330" y="870" width="36" height="12" fill="#E5E7EB" rx="3"/>
+</svg>
+
+
