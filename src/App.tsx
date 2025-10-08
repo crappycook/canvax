@@ -1,13 +1,9 @@
 import '@xyflow/react/dist/style.css'
-
-import Canvax from '@/components/Canvax'
+import { RouterProvider } from 'react-router-dom'
+import { router } from '@/app/router'
 
 function App() {
-  return (
-    <div className="w-screen h-screen">
-      <Canvax />
-    </div>
-  )
+  return <RouterProvider router={router} />
 }
 
 export default App

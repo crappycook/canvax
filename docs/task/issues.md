@@ -1,13 +1,13 @@
 # Milestone A · Canvas MVP
 
 ## Phase 1 · App Skeleton & State
-- [ ] 初始化应用外壳与路由结构\
+- [x] 初始化应用外壳与路由结构\
       创建 `AppShell`, `ProjectHubPage`, `CanvasPage`, `SettingsModal` 框架，配置 `createBrowserRouter`（`/`, `/project/:projectId`, `/project/:projectId/settings`）。\
       ✅ 验证：在开发环境访问三个路由，确保 modal 路由可以在同一路径下覆盖渲染。
-- [ ] 实现统一 Zustand Store 与切片\
+- [x] 实现统一 Zustand Store 与切片\
       按 `docs/ui-architecture.md` 定义完成 `createProjectSlice` 等切片，支持 `deriveSnapshot`、`hydrateProject`、`applyNodes/Edges`。\
       ✅ 验证：在 devtools 中看到各切片的初始状态；调用 `hydrateProject` 后节点/边与视图同步更新。
-- [ ] 封装基础服务层\
+- [x] 封装基础服务层\
       实现 `llmClient`, `storage`, `crypto`, `export` 空壳（仅 MVP 必需方法）、`collectUpstreamContext` 图算法与 `useExecutionManager` 调度 hook。\
       ✅ 验证：单元测试覆盖 `collectUpstreamContext`（拓扑遍历 & 去重）与 `storage` fallback 逻辑。
 

@@ -1,0 +1,148 @@
+import { type ProjectSnapshot } from '@/canvas/types'
+import { type AppSettings, type Template, type StorageService } from '@/types/storage'
+
+export class IndexedDBStorage implements StorageService {
+  private dbName = 'canvas-app'
+  private version = 1
+  
+  private async getDB(): Promise<IDBDatabase> {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.dbName, this.version)
+      
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve(request.result)
+      
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result
+        
+        // Create object stores
+        if (!db.objectStoreNames.contains('projects')) {
+          db.createObjectStore('projects', { keyPath: 'id' })
+        }
+        if (!db.objectStoreNames.contains('templates')) {
+          db.createObjectStore('templates', { keyPath: 'id' })
+        }
+        if (!db.objectStoreNames.contains('settings')) {
+          db.createObjectStore('settings', { keyPath: 'id' })
+        }
+      }
+    })
+  }
+
+  async saveProject(projectId: string, data: ProjectSnapshot): Promise<void> {
+    const db = await this.getDB()
+    const transaction = db.transaction(['projects'], 'readwrite')
+    const store = transaction.objectStore('projects')
+    
+    return new Promise((resolve, reject) => {
+      const request = store.put({ ...data, id: projectId })
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve()
+    })
+  }
+
+  async loadProject(projectId: string): Promise<ProjectSnapshot | null> {
+    const db = await this.getDB()
+    const transaction = db.transaction(['projects'], 'readonly')
+    const store = transaction.objectStore('projects')
+    
+    return new Promise((resolve, reject) => {
+      const request = store.get(projectId)
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve(request.result || null)
+    })
+  }
+
+  async deleteProject(projectId: string): Promise<void> {
+    const db = await this.getDB()
+    const transaction = db.transaction(['projects'], 'readwrite')
+    const store = transaction.objectStore('projects')
+    
+    return new Promise((resolve, reject) => {
+      const request = store.delete(projectId)
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve()
+    })
+  }
+
+  async listProjects(): Promise<Array<{ id: string; title: string; updatedAt: number }>> {
+    const db = await this.getDB()
+    const transaction = db.transaction(['projects'], 'readonly')
+    const store = transaction.objectStore('projects')
+    
+    return new Promise((resolve, reject) => {
+      const request = store.getAll()
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const projects = request.result.map((p: ProjectSnapshot) => ({
+          id: p.id,
+          title: p.metadata.title,
+          updatedAt: p.metadata.updatedAt
+        }))
+        resolve(projects)
+      }
+    })
+  }
+
+  async saveTemplate(templateId: string, data: Template): Promise<void> {
+    const db = await this.getDB()
+    const transaction = db.transaction(['templates'], 'readwrite')
+    const store = transaction.objectStore('templates')
+    
+    return new Promise((resolve, reject) => {
+      const request = store.put({ ...data, id: templateId })
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve()
+    })
+  }
+
+  async loadTemplate(templateId: string): Promise<Template | null> {
+    const db = await this.getDB()
+    const transaction = db.transaction(['templates'], 'readonly')
+    const store = transaction.objectStore('templates')
+    
+    return new Promise((resolve, reject) => {
+      const request = store.get(templateId)
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve(request.result || null)
+    })
+  }
+
+  async listTemplates(): Promise<string[]> {
+    const db = await this.getDB()
+    const transaction = db.transaction(['templates'], 'readonly')
+    const store = transaction.objectStore('templates')
+    
+    return new Promise((resolve, reject) => {
+      const request = store.getAllKeys()
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve(request.result.map(String))
+    })
+  }
+
+  async saveSettings(settings: AppSettings): Promise<void> {
+    const db = await this.getDB()
+    const transaction = db.transaction(['settings'], 'readwrite')
+    const store = transaction.objectStore('settings')
+    
+    return new Promise((resolve, reject) => {
+      const request = store.put({ ...settings, id: 'app-settings' })
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve()
+    })
+  }
+
+  async loadSettings(): Promise<AppSettings | null> {
+    const db = await this.getDB()
+    const transaction = db.transaction(['settings'], 'readonly')
+    const store = transaction.objectStore('settings')
+    
+    return new Promise((resolve, reject) => {
+      const request = store.get('app-settings')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve(request.result || null)
+    })
+  }
+}
+
+export const storageService = new IndexedDBStorage()

@@ -11,6 +11,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Package Manager**: This project uses pnpm as the primary package manager
 
+**TypeScript Configuration**: Uses TypeScript 5.8 with strict configuration including:
+- Strict null checks and unused variable detection
+- ES2022 target with DOM library support
+- Bundle mode with `@` path alias for `src/` directory
+- Modern JSX transform for React 19
+
 ## Architecture Overview
 
 This is a React + TypeScript + Vite application implementing a Flowith-style canvas-based AI interaction tool. The application uses React Flow (@xyflow/react) for canvas/flow functionality.
@@ -55,10 +61,11 @@ This is a React + TypeScript + Vite application implementing a Flowith-style can
 - Use modern Tailwind CSS syntax (e.g., `size-4` instead of `h-4 w-4`)
 
 ### Current Implementation Status
-- Basic canvas with React Flow integration
-- Custom node components with header/content/footer structure
-- Demo nodes with placeholder content
-- No LLM integration or state persistence yet
+- Basic canvas with React Flow integration using `useNodesState` and `useEdgesState`
+- Custom node components with compound component architecture (BaseNode, BaseNodeHeader, BaseNodeContent, BaseNodeFooter)
+- React Flow handles (connection points) integrated into custom nodes
+- Demo nodes showing full component structure with example content
+- No LLM integration or external data persistence yet
 
 ### Planned Features (from PRD)
 - Multi-model AI node connections
