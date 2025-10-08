@@ -144,6 +144,14 @@ export const edgeTypes = { default: SmartEdge } as const
   - `handleNodesChange` → `nodesSlice.applyChanges`
   - `handleEdgesChange` → `edgesSlice.applyChanges`
   - `handleConnect` → `edgesSlice.addEdge`（含循环校验）
+  - `handleNodeRun` → `useRunNode(nodeId)`（收集上下游上下文并调度执行）
+
+运行流程要点：
+
+1. 节点触发运行时，通过 `collectUpstreamContext` 获取所有上游节点最后 N 条消息，组装为请求上下文。
+2. `useExecutionManager` 将节点加入运行队列，`RuntimeSlice.runNext` 负责调度并支持多节点并发。
+3. LLM 请求挂载 `AbortController`，便于 Stop 按钮取消；成功与失败都会写回 `messages/status/error`。
+4. 完成后 `RuntimeSlice` 清理 `inFlight`，触发下一任务，保持 UI 状态一致。
 
 ---
 
@@ -209,8 +217,10 @@ export const useStore = create<RootState>()(
 
 - `ProjectSlice`
   - `currentProjectId: string | null`
-  - `project: Project`（含 `version, nodes[], edges[], settings, history`）
-  - `newProject() / openProject(file) / saveProject()`
+  - `snapshot: ProjectSnapshot | null`（仅持久化 metadata、settings、history、节点/边引用）
+  - `deriveSnapshot()`：从 `nodes`、`edges`、`settings`、`canvas` 切片组合保存 payload
+  - `hydrateProject(snapshot)`：重置 `nodes/edges/canvas/settings` 到导入状态
+  - `newProject() / openProject(file) / saveProject()`（`save` 将写入 `snapshot` 并触发持久化）
 
 - `CanvasSlice`
   - `viewport { x, y, zoom }`、`snapToGrid: boolean`、`selection: ids[]`
@@ -220,14 +230,19 @@ export const useStore = create<RootState>()(
   - `nodes: Node<ChatNodeData>[]`
   - `createNode(type: 'chat', position)`、`updateNode(id, draft)`、`duplicateNode(id)`
   - `setNodePosition(id, position)`、`removeNode(id)`
+  - `applyNodes(nodes)`：导入项目时批量写入节点数组
 
 - `EdgesSlice`
   - `edges: Edge[]`
   - `addEdge(conn)`、`removeEdge(id)`、`validateNoCycle(source, target)`
+  - `applyEdges(edges)`：导入项目时批量写入边数组
 
 - `RuntimeSlice`
-  - `queue: RunTask[]`、`enqueue(nodeId)`、`cancel(taskId)`
-  - `setNodeStatus(id, status)`、`setNodeError(id, error)`
+  - `queue: RunTask[]`、`inFlight: Record<string, RunTask>`
+  - `maxConcurrent`（P0 默认 `Infinity`，P2 可配置）
+  - `enqueue(nodeId)`、`dequeue()`、`cancel(taskId)`
+  - `setNodeStatus(id, status)`、`setNodeError(id, error)`、`setNodeMessages(id, updater)`
+  - `runNext()`：并发调度执行（尊重 `maxConcurrent`，空闲时自动出队）
 
 - `SettingsSlice`
   - `apiKey(enc)`、`defaultModel`、`language`、`proxy`（P1）
@@ -243,18 +258,27 @@ export const useStore = create<RootState>()(
 
 ```ts
 // src/types/project.ts
-export interface Project {
+export interface ProjectSnapshot {
   id: string
   version: number
-  nodes: Array<Node<ChatNodeData>>
-  edges: Array<Edge>
+  metadata: {
+    title: string
+    updatedAt: number
+  }
+  graph: {
+    nodes: Array<Node<ChatNodeData>>
+    edges: Array<Edge>
+    viewport: Viewport
+  }
   settings: {
     defaultModel: string
     language: 'zh' | 'en'
   }
-  history: unknown // 具体实现见 CanvasSlice
+  history: unknown // 具体实现见 CanvasSlice（撤销/重做）
 }
 ```
+
+> 保存时只记录 `ProjectSnapshot`；运行时状态仍由各 Slice 管理，避免重复持久化。
 
 ---
 
@@ -270,8 +294,12 @@ src/services/
   export.ts          // PNG/Markdown/JSON 导出
 
 src/hooks/
-  useRunNode.ts      // 将节点数据 -> 请求参数；写回 messages/status
-  useHotkeys.ts      // 快捷键集中处理
+  useRunNode.ts          // 将节点数据 -> 请求参数；写回 messages/status
+  useHotkeys.ts          // 快捷键集中处理
+  useExecutionManager.ts // 调度并发运行 + 取消
+
+src/lib/
+  graph.ts               // collectUpstreamContext、拓扑排序、graph utils
 ```
 
 示例：
@@ -300,6 +328,63 @@ export async function createChatCompletion({
   })
   if (!res.ok) throw new Error(`LLM_ERROR_${res.status}`)
   return res.json()
+}
+```
+
+```ts
+// src/lib/graph.ts
+export function collectUpstreamContext({
+  nodeId,
+  nodes,
+  edges,
+  limit = 4,
+}: CollectContextParams): ChatMessage[] {
+  const visited = new Set<string>()
+  const stack = [nodeId]
+  const result: ChatMessage[] = []
+
+  while (stack.length) {
+    const current = stack.pop()!
+    if (visited.has(current)) continue
+    visited.add(current)
+
+    const upstreamIds = edges
+      .filter(edge => edge.target === current)
+      .map(edge => edge.source)
+
+    upstreamIds.forEach(id => {
+      const upstream = nodes.find(n => n.id === id)
+      if (upstream?.data.messages.length) {
+        result.push(...upstream.data.messages.slice(-limit))
+      }
+      stack.push(id)
+    })
+  }
+
+  return result.reverse()
+}
+```
+
+```ts
+// src/hooks/useExecutionManager.ts
+export function useExecutionManager() {
+  const { enqueue, dequeue, inFlight, maxConcurrent, runNext } = useStore(state => ({
+    enqueue: state.enqueue,
+    dequeue: state.dequeue,
+    inFlight: state.inFlight,
+    maxConcurrent: state.maxConcurrent,
+    runNext: state.runNext,
+  }))
+
+  const execute = useCallback(
+    async (nodeId: string) => {
+      enqueue(nodeId)
+      runNext()
+    },
+    [enqueue, runNext]
+  )
+
+  return { execute, inFlight, maxConcurrent }
 }
 ```
 
