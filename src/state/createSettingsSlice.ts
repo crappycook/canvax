@@ -17,7 +17,7 @@ export interface SettingsSlice {
   resetSettings: () => void
 }
 
-export const createSettingsSlice: StateCreator<SettingsSlice> = (set, get) => ({
+export const createSettingsSlice: StateCreator<SettingsSlice> = (set) => ({
   settings: {
     defaultModel: 'gpt-4',
     language: 'en',
@@ -45,6 +45,7 @@ export const createSettingsSlice: StateCreator<SettingsSlice> = (set, get) => ({
 
   removeApiKey: (provider) => {
     set((state) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { [provider]: _, ...apiKeys } = state.settings.apiKeys
       return {
         settings: { ...state.settings, apiKeys }

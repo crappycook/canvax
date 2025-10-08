@@ -23,19 +23,23 @@ export interface RootState
 export const useStore = create<RootState>()(
   devtools(
     persist(
-      (set, get) => ({
-        ...createProjectSlice(set, get),
-        ...createCanvasSlice(set, get),
-        ...createNodesSlice(set, get),
-        ...createEdgesSlice(set, get),
-        ...createRuntimeSlice(set, get),
-        ...createSettingsSlice(set, get),
-        ...createUiSlice(set, get),
-        ...createTemplatesSlice(set, get),
+      (set, get, api) => ({
+        ...createProjectSlice(set, get, api),
+        ...createCanvasSlice(set, get, api),
+        ...createNodesSlice(set, get, api),
+        ...createEdgesSlice(set, get, api),
+        ...createRuntimeSlice(set, get, api),
+        ...createSettingsSlice(set, get, api),
+        ...createUiSlice(set, get, api),
+        ...createTemplatesSlice(set, get, api),
       }),
       {
         name: 'canvas-app',
-        partialize: s => ({ project: s.project, settings: s.settings }),
+        partialize: s => ({ 
+          currentProjectId: s.currentProjectId, 
+          snapshot: s.snapshot,
+          settings: s.settings
+        }),
       }
     )
   )

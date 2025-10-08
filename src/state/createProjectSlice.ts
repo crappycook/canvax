@@ -4,6 +4,7 @@ import type { CanvasSlice } from './createCanvasSlice'
 import type { NodesSlice } from './createNodesSlice'
 import type { EdgesSlice } from './createEdgesSlice'
 import type { SettingsSlice } from './createSettingsSlice'
+import { unifiedStorageService } from '@/services/unifiedStorage'
 
 type RootStateForProject = ProjectSlice & CanvasSlice & NodesSlice & EdgesSlice & SettingsSlice
 
@@ -15,7 +16,8 @@ export interface ProjectSlice {
   hydrateProject: (snapshot: ProjectSnapshot) => void
   newProject: (title?: string) => string
   openProject: (file: File) => Promise<void>
-  saveProject: () => ProjectSnapshot
+  saveProject: (title?: string) => Promise<ProjectSnapshot>
+  autoSaveProject: () => Promise<void>
 }
 
 const createDefaultHistory = (): CanvasSlice['history'] => ({
@@ -122,22 +124,58 @@ export const createProjectSlice: StateCreator<ProjectSlice & CanvasSlice & Nodes
       history,
     })
 
+    // Auto-save the new project
+    unifiedStorageService.saveProject(projectId, snapshot).catch(error => {
+      console.error('Failed to auto-save new project:', error)
+    })
+
     return projectId
   },
 
   openProject: async (file: File) => {
     try {
-      const content = await file.text()
-      const snapshot = JSON.parse(content) as ProjectSnapshot
+      const snapshot = await unifiedStorageService.importProject(file)
       get().hydrateProject(snapshot)
     } catch (error) {
       console.error('Failed to open project:', error)
     }
   },
 
-  saveProject: () => {
+  saveProject: async (title?: string) => {
     const snapshot = get().deriveSnapshot()
-    set({ snapshot })
-    return snapshot
+    const nextTitle = title?.trim()
+    const updatedSnapshot: ProjectSnapshot = nextTitle
+      ? {
+          ...snapshot,
+          metadata: {
+            ...snapshot.metadata,
+            title: nextTitle.length > 0 ? nextTitle : 'Untitled Project',
+            updatedAt: Date.now(),
+          },
+        }
+      : {
+          ...snapshot,
+          metadata: {
+            ...snapshot.metadata,
+            updatedAt: Date.now(),
+          },
+        }
+
+    set({ snapshot: updatedSnapshot })
+
+    if (updatedSnapshot.id) {
+      try {
+        await unifiedStorageService.saveProject(updatedSnapshot.id, updatedSnapshot)
+      } catch (error) {
+        console.error('Failed to save project:', error)
+        throw error
+      }
+    }
+
+    return updatedSnapshot
+  },
+
+  autoSaveProject: async () => {
+    await get().saveProject()
   },
 })

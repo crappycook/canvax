@@ -18,7 +18,7 @@ export interface UiSlice {
   toggleMinimap: () => void
 }
 
-export const createUiSlice: StateCreator<UiSlice> = (set, get) => ({
+export const createUiSlice: StateCreator<UiSlice> = (set) => ({
   ui: {
     sidebarOpen: false,
     settingsOpen: false,

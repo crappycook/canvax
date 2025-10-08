@@ -1,10 +1,19 @@
 import { type StateCreator } from 'zustand'
-import { type Edge } from '@xyflow/react'
+import {
+  type Edge,
+  type EdgeChange,
+  type Connection,
+  addEdge as reactFlowAddEdge,
+  applyEdgeChanges,
+} from '@xyflow/react'
 
 export interface EdgesSlice {
   edges: Edge[]
   
   // Edge management
+  setEdges: (edges: Edge[]) => void
+  applyEdgeChanges: (changes: EdgeChange[]) => void
+  connectEdge: (connection: Connection) => void
   addEdge: (edge: Edge) => void
   removeEdge: (edgeId: string) => void
   removeEdgesConnectedToNode: (nodeId: string) => void
@@ -17,6 +26,22 @@ export interface EdgesSlice {
 
 export const createEdgesSlice: StateCreator<EdgesSlice> = (set, get) => ({
   edges: [],
+
+  setEdges: (edges) => {
+    set({ edges })
+  },
+
+  applyEdgeChanges: (changes) => {
+    set(state => ({
+      edges: applyEdgeChanges(changes, state.edges),
+    }))
+  },
+
+  connectEdge: (connection) => {
+    set(state => ({
+      edges: reactFlowAddEdge(connection, state.edges),
+    }))
+  },
 
   addEdge: (edge) => {
     set((state) => ({

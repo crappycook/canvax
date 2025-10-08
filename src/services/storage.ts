@@ -5,8 +5,20 @@ export class IndexedDBStorage implements StorageService {
   private dbName = 'canvas-app'
   private version = 1
   
+  async testConnection(): Promise<void> {
+    try {
+      await this.getDB()
+    } catch {
+      throw new Error('IndexedDB not available')
+    }
+  }
+  
   private async getDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
+      if (typeof indexedDB === 'undefined') {
+        reject(new Error('IndexedDB is not supported in this environment'))
+        return
+      }
       const request = indexedDB.open(this.dbName, this.version)
       
       request.onerror = () => reject(request.error)

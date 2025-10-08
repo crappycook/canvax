@@ -12,10 +12,10 @@
       ✅ 验证：单元测试覆盖 `collectUpstreamContext`（拓扑遍历 & 去重）与 `storage` fallback 逻辑。
 
 ## Phase 2 · Project Hub & Persistence
-- [ ] IndexedDB 项目存储与回退方案\
+- [x] IndexedDB 项目存储与回退方案\
       在 `storage` 内实现 IndexedDB 读写，失败时降级为 File System 导入/导出；注入到 ProjectStore。\
       ✅ 验证：新建项目→保存→刷新→自动恢复；关闭 IndexedDB（DevTools）后仍可导出/导入 JSON。
-- [ ] Project Hub UI\
+- [x] Project Hub UI\
       完成最近项目列表、创建、打开、删除入口，显示 `snapshot.metadata`。\
       ✅ 验证：交互均可通过键盘操作，空状态展示引导。
 

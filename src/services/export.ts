@@ -64,6 +64,7 @@ export class ExportService {
     })
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async exportMultipleProjects(_projectIds: string[], _format: string): Promise<Blob> {
     // TODO: Implement batch export
     // For now, return empty blob

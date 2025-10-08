@@ -1,13 +1,19 @@
 import { type StateCreator } from 'zustand'
-import { type Node } from '@xyflow/react'
+import {
+  type Node,
+  type NodeChange,
+  applyNodeChanges,
+} from '@xyflow/react'
 import { type ChatNodeData, type ChatMessage } from '@/canvas/types'
 
 export interface NodesSlice {
-  nodes: Node<ChatNodeData>[]
+  nodes: Node[]
   selectedNodeId: string | null
   
   // Node management
-  addNode: (node: Node<ChatNodeData>) => void
+  setNodes: (nodes: Node[]) => void
+  applyNodeChanges: (changes: NodeChange[]) => void
+  addNode: (node: Node) => void
   updateNode: (nodeId: string, updates: Partial<ChatNodeData>) => void
   removeNode: (nodeId: string) => void
   duplicateNode: (nodeId: string) => void
@@ -19,12 +25,22 @@ export interface NodesSlice {
   
   // Selection
   selectNode: (nodeId: string | null) => void
-  getSelectedNode: () => Node<ChatNodeData> | null
+  getSelectedNode: () => Node | null
 }
 
 export const createNodesSlice: StateCreator<NodesSlice> = (set, get) => ({
   nodes: [],
   selectedNodeId: null,
+
+  setNodes: (nodes) => {
+    set({ nodes })
+  },
+
+  applyNodeChanges: (changes) => {
+    set(state => ({
+      nodes: applyNodeChanges(changes, state.nodes),
+    }))
+  },
 
   addNode: (node) => {
     set((state) => ({
@@ -36,7 +52,13 @@ export const createNodesSlice: StateCreator<NodesSlice> = (set, get) => ({
     set((state) => ({
       nodes: state.nodes.map((node) =>
         node.id === nodeId
-          ? { ...node, data: { ...node.data, ...updates } }
+          ? {
+              ...node,
+              data: {
+                ...(typeof node.data === 'object' && node.data !== null ? node.data : {}),
+                ...updates,
+              },
+            }
           : node
       )
     }))
@@ -54,18 +76,23 @@ export const createNodesSlice: StateCreator<NodesSlice> = (set, get) => ({
     const node = state.nodes.find((n) => n.id === nodeId)
     if (!node) return
 
-    const newNode: Node<ChatNodeData> = {
+    const baseData =
+      typeof node.data === 'object' && node.data !== null
+        ? { ...node.data }
+        : node.data
+
+    if (baseData && typeof baseData === 'object' && 'title' in baseData && typeof baseData.title === 'string') {
+      baseData.title = `${baseData.title} (Copy)`
+    }
+
+    const newNode: Node = {
       ...node,
       id: `node-${Date.now()}`,
       position: {
         x: node.position.x + 200,
         y: node.position.y
       },
-      data: {
-        ...node.data,
-        title: `${node.data.title} (Copy)`,
-        messages: []
-      }
+      data: baseData,
     }
 
     set((state) => ({
@@ -77,7 +104,12 @@ export const createNodesSlice: StateCreator<NodesSlice> = (set, get) => ({
     set((state) => ({
       nodes: state.nodes.map((node) =>
         node.id === nodeId
-          ? { ...node, data: { ...node.data, status } }
+          ? {
+              ...node,
+              data: updateData(node.data, draft => {
+                draft.status = status
+              }),
+            }
           : node
       )
     }))
@@ -89,10 +121,12 @@ export const createNodesSlice: StateCreator<NodesSlice> = (set, get) => ({
         node.id === nodeId
           ? {
               ...node,
-              data: {
-                ...node.data,
-                messages: [...node.data.messages, message]
-              }
+              data: updateData(node.data, draft => {
+                if (!Array.isArray(draft.messages)) {
+                  draft.messages = []
+                }
+                draft.messages = [...draft.messages, message]
+              }),
             }
           : node
       )
@@ -103,7 +137,12 @@ export const createNodesSlice: StateCreator<NodesSlice> = (set, get) => ({
     set((state) => ({
       nodes: state.nodes.map((node) =>
         node.id === nodeId
-          ? { ...node, data: { ...node.data, messages: [] } }
+          ? {
+              ...node,
+              data: updateData(node.data, draft => {
+                draft.messages = []
+              }),
+            }
           : node
       )
     }))
@@ -118,3 +157,15 @@ export const createNodesSlice: StateCreator<NodesSlice> = (set, get) => ({
     return state.nodes.find((node) => node.id === state.selectedNodeId) || null
   }
 })
+
+function updateData(
+  data: Node['data'],
+  updater: (draft: ChatNodeData & Record<string, any>) => void,
+) {
+  const draft: ChatNodeData & Record<string, any> =
+    typeof data === 'object' && data !== null
+      ? { ...(data as Record<string, any>) }
+      : ({ messages: [], status: 'idle' } as ChatNodeData & Record<string, any>)
+  updater(draft)
+  return draft
+}

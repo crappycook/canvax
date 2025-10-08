@@ -9,7 +9,7 @@ export interface ChatMessage {
   createdAt: number
 }
 
-export interface ChatNodeData {
+export interface ChatNodeData extends Record<string, unknown> {
   title: string
   modelId: string
   prompt: string // current prompt
@@ -26,8 +26,8 @@ export interface ProjectSnapshot {
     updatedAt: number
   }
   graph: {
-    nodes: Array<Node<ChatNodeData>>
-    edges: Array<Edge>
+    nodes: Node[]
+    edges: Edge[]
     viewport: Viewport
   }
   settings: {

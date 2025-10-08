@@ -1,4 +1,4 @@
-import { type ProjectSnapshot } from '@/canvas/types'
+import type { ProjectSnapshot } from '@/canvas/types'
 
 export interface Template {
   id: string
@@ -18,12 +18,18 @@ export interface AppSettings {
   temperature: number
 }
 
+export interface ProjectMetadata {
+  id: string
+  title: string
+  updatedAt: number
+}
+
 export interface StorageService {
   // Project operations
   saveProject(projectId: string, data: ProjectSnapshot): Promise<void>
   loadProject(projectId: string): Promise<ProjectSnapshot | null>
   deleteProject(projectId: string): Promise<void>
-  listProjects(): Promise<Array<{ id: string; title: string; updatedAt: number }>>
+  listProjects(): Promise<ProjectMetadata[]>
   
   // Template operations
   saveTemplate(templateId: string, data: Template): Promise<void>
