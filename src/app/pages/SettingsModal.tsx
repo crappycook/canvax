@@ -23,13 +23,15 @@ export function SettingsModal() {
     return hasCurrent ? current : llmModels[0]?.id ?? ''
   })
   const [language, setLanguage] = useState(settings.language)
-  const [apiKeys, setApiKeys] = useState<Record<string, string>>(() => {
-    const initial: Record<string, string> = {}
+  const createApiKeyDraft = useCallback(() => {
+    const draft: Record<string, string> = {}
     llmProviders.forEach(provider => {
-      initial[provider.id] = settings.apiKeys?.[provider.id] ?? ''
+      draft[provider.id] = settings.apiKeys?.[provider.id] ?? ''
     })
-    return initial
-  })
+    return draft
+  }, [settings.apiKeys])
+
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>(() => createApiKeyDraft())
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
@@ -42,14 +44,16 @@ export function SettingsModal() {
   }, [settings.language])
 
   useEffect(() => {
-    setApiKeys(() => {
-      const next: Record<string, string> = {}
-      llmProviders.forEach(provider => {
-        next[provider.id] = settings.apiKeys?.[provider.id] ?? ''
-      })
-      return next
+    const next = createApiKeyDraft()
+    setApiKeys(prev => {
+      const nextEntries = Object.entries(next)
+      const hasDifference =
+        nextEntries.length !== Object.keys(prev).length ||
+        nextEntries.some(([providerId, key]) => (prev[providerId] ?? '') !== key)
+
+      return hasDifference ? next : prev
     })
-  }, [settings.apiKeys])
+  }, [createApiKeyDraft])
 
   const handleClose = useCallback(() => {
     navigate(dismissPath, { replace: true })
