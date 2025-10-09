@@ -26,18 +26,18 @@ export const createCanvasSlice: StateCreator<CanvasSlice> = (set, get) => ({
     present: null,
     future: []
   },
-  
+
   setViewport: (viewport) => set({ viewport }),
   setSnapToGrid: (snapToGrid) => set({ snapToGrid }),
   setSelection: (selection) => set({ selection }),
-  
+
   undo: () => {
     const { history } = get()
     if (history.past.length === 0) return
-    
+
     const previous = history.past[history.past.length - 1]
     const newPast = history.past.slice(0, -1)
-    
+
     set({
       history: {
         past: newPast,
@@ -46,14 +46,14 @@ export const createCanvasSlice: StateCreator<CanvasSlice> = (set, get) => ({
       }
     })
   },
-  
+
   redo: () => {
     const { history } = get()
     if (history.future.length === 0) return
-    
+
     const next = history.future[0]
     const newFuture = history.future.slice(1)
-    
+
     set({
       history: {
         past: [...history.past, history.present],

@@ -47,6 +47,31 @@ export const BaseNodeHeader = forwardRef<
 BaseNodeHeader.displayName = "BaseNodeHeader";
 
 /**
+ * A custom header component that supports title and description with optional edit functionality 
+ */
+export interface CustomHeaderProps {
+  title: string;
+  description?: string;
+  editable?: boolean;
+  onTitleChange?: (newTitle: string) => void;
+}
+
+export const CustomHeader = forwardRef<
+  HTMLDivElement,
+  CustomHeaderProps
+>(({ title, description }) => {
+  return (
+    <div className="p-4 border-b">
+      <h3 className="font-semibold text-sm">{title}</h3>
+      {description && (
+        <p className="text-xs text-muted-foreground mt-1">{description}</p>
+      )}
+    </div>
+  );
+});
+CustomHeader.displayName = "CustomHeader";
+
+/**
  * The title text for the node. To maintain a native application feel, the title
  * text is not selectable.
  */

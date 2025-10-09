@@ -146,20 +146,20 @@ export const createProjectSlice: StateCreator<ProjectSlice & CanvasSlice & Nodes
     const nextTitle = title?.trim()
     const updatedSnapshot: ProjectSnapshot = nextTitle
       ? {
-          ...snapshot,
-          metadata: {
-            ...snapshot.metadata,
-            title: nextTitle.length > 0 ? nextTitle : 'Untitled Project',
-            updatedAt: Date.now(),
-          },
-        }
+        ...snapshot,
+        metadata: {
+          ...snapshot.metadata,
+          title: nextTitle.length > 0 ? nextTitle : 'Untitled Project',
+          updatedAt: Date.now(),
+        },
+      }
       : {
-          ...snapshot,
-          metadata: {
-            ...snapshot.metadata,
-            updatedAt: Date.now(),
-          },
-        }
+        ...snapshot,
+        metadata: {
+          ...snapshot.metadata,
+          updatedAt: Date.now(),
+        },
+      }
 
     set({ snapshot: updatedSnapshot })
 

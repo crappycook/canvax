@@ -4,12 +4,12 @@ import {
   type NodeChange,
   applyNodeChanges,
 } from '@xyflow/react'
-import { type ChatNodeData, type ChatMessage } from '@/canvas/types'
+import { type ChatNodeData, type ChatMessage } from '@/types'
 
 export interface NodesSlice {
   nodes: Node[]
   selectedNodeId: string | null
-  
+
   // Node management
   setNodes: (nodes: Node[]) => void
   applyNodeChanges: (changes: NodeChange[]) => void
@@ -17,12 +17,12 @@ export interface NodesSlice {
   updateNode: (nodeId: string, updates: Partial<ChatNodeData>) => void
   removeNode: (nodeId: string) => void
   duplicateNode: (nodeId: string) => void
-  
+
   // Node operations
   setNodeStatus: (nodeId: string, status: 'idle' | 'running' | 'error' | 'success') => void
   addMessageToNode: (nodeId: string, message: ChatMessage) => void
   clearNodeMessages: (nodeId: string) => void
-  
+
   // Selection
   selectNode: (nodeId: string | null) => void
   getSelectedNode: () => Node | null
@@ -53,12 +53,12 @@ export const createNodesSlice: StateCreator<NodesSlice> = (set, get) => ({
       nodes: state.nodes.map((node) =>
         node.id === nodeId
           ? {
-              ...node,
-              data: {
-                ...(typeof node.data === 'object' && node.data !== null ? node.data : {}),
-                ...updates,
-              },
-            }
+            ...node,
+            data: {
+              ...(typeof node.data === 'object' && node.data !== null ? node.data : {}),
+              ...updates,
+            },
+          }
           : node
       )
     }))
@@ -105,11 +105,11 @@ export const createNodesSlice: StateCreator<NodesSlice> = (set, get) => ({
       nodes: state.nodes.map((node) =>
         node.id === nodeId
           ? {
-              ...node,
-              data: updateData(node.data, draft => {
-                draft.status = status
-              }),
-            }
+            ...node,
+            data: updateData(node.data, draft => {
+              draft.status = status
+            }),
+          }
           : node
       )
     }))
@@ -120,14 +120,14 @@ export const createNodesSlice: StateCreator<NodesSlice> = (set, get) => ({
       nodes: state.nodes.map((node) =>
         node.id === nodeId
           ? {
-              ...node,
-              data: updateData(node.data, draft => {
-                if (!Array.isArray(draft.messages)) {
-                  draft.messages = []
-                }
-                draft.messages = [...draft.messages, message]
-              }),
-            }
+            ...node,
+            data: updateData(node.data, draft => {
+              if (!Array.isArray(draft.messages)) {
+                draft.messages = []
+              }
+              draft.messages = [...draft.messages, message]
+            }),
+          }
           : node
       )
     }))
@@ -138,11 +138,11 @@ export const createNodesSlice: StateCreator<NodesSlice> = (set, get) => ({
       nodes: state.nodes.map((node) =>
         node.id === nodeId
           ? {
-              ...node,
-              data: updateData(node.data, draft => {
-                draft.messages = []
-              }),
-            }
+            ...node,
+            data: updateData(node.data, draft => {
+              draft.messages = []
+            }),
+          }
           : node
       )
     }))
@@ -164,8 +164,21 @@ function updateData(
 ) {
   const draft: ChatNodeData & Record<string, any> =
     typeof data === 'object' && data !== null
-      ? { ...(data as Record<string, any>) }
-      : ({ messages: [], status: 'idle' } as ChatNodeData & Record<string, any>)
+      ? {
+        label: (data as any).label || 'Untitled',
+        model: (data as any).model || 'gpt-4',
+        prompt: (data as any).prompt || '',
+        messages: (data as any).messages || [],
+        status: (data as any).status || 'idle',
+        ...(data as Record<string, any>)
+      }
+      : ({
+        label: 'Untitled',
+        model: 'gpt-4',
+        prompt: '',
+        messages: [],
+        status: 'idle'
+      } as ChatNodeData & Record<string, any>)
   updater(draft)
   return draft
 }

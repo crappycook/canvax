@@ -9,7 +9,7 @@ import {
 
 export interface EdgesSlice {
   edges: Edge[]
-  
+
   // Edge management
   setEdges: (edges: Edge[]) => void
   applyEdgeChanges: (changes: EdgeChange[]) => void
@@ -17,7 +17,7 @@ export interface EdgesSlice {
   addEdge: (edge: Edge) => void
   removeEdge: (edgeId: string) => void
   removeEdgesConnectedToNode: (nodeId: string) => void
-  
+
   // Edge operations
   getIncomingEdges: (nodeId: string) => Edge[]
   getOutgoingEdges: (nodeId: string) => Edge[]
@@ -76,12 +76,12 @@ export const createEdgesSlice: StateCreator<EdgesSlice> = (set, get) => ({
   getConnectedNodes: (nodeId) => {
     const state = get()
     const connected = new Set<string>()
-    
+
     state.edges.forEach((edge) => {
       if (edge.source === nodeId) connected.add(edge.target)
       if (edge.target === nodeId) connected.add(edge.source)
     })
-    
+
     return Array.from(connected)
   }
 })

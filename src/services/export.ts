@@ -1,4 +1,4 @@
-import { type ProjectSnapshot } from '@/canvas/types'
+import { type ProjectSnapshot } from '@/types'
 
 export interface ExportFormat {
   id: string
@@ -80,13 +80,14 @@ export class ExportService {
     
     // Add node content
     project.graph.nodes.forEach((node) => {
-      lines.push(`## ${node.data.title}`)
-      lines.push(`\n**Model:** ${node.data.modelId}`)
-      lines.push(`\n**Prompt:** ${node.data.prompt}`)
+      const nodeData = node.data
+      lines.push(`## ${nodeData.label || 'Untitled Node'}`)
+      lines.push(`\n**Model:** ${nodeData.model || 'Unknown'}`)
+      lines.push(`\n**Prompt:** ${nodeData.prompt || 'No prompt'}`)
       
-      if (node.data.messages.length > 0) {
+      if (nodeData.messages && nodeData.messages.length > 0) {
         lines.push('\n### Messages:')
-        node.data.messages.forEach((message) => {
+        nodeData.messages.forEach((message) => {
           lines.push(`\n**${message.role.toUpperCase()}:**`)
           lines.push(message.content)
           lines.push('')

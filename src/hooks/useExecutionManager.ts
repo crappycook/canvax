@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react'
 import { useStore } from '@/state/store'
 import { LLMClient } from '@/services/llmClient'
 import { collectUpstreamContext } from '@/algorithms/collectUpstreamContext'
+import type { ChatMessage } from '@/types'
 
 export interface ExecutionManager {
   isRunning: boolean
@@ -46,14 +47,15 @@ export function useExecutionManager(llmClient: LLMClient): ExecutionManager {
       setNodeStatus(nodeId, 'running')
       
       // Collect context from upstream nodes
-      const context = collectUpstreamContext(nodeId, nodes, edges)
+      const context = collectUpstreamContext(nodeId, nodes as any, edges)
       
       // Prepare LLM request
+      const nodeData = node.data as any
       const request = {
-        model: node.data.modelId,
+        model: nodeData.model || 'gpt-4',
         messages: [
           ...context.messages,
-          { role: 'user' as const, content: node.data.prompt }
+          { role: 'user' as const, content: nodeData.prompt || '' }
         ],
         temperature: 0.7,
         maxTokens: 1000
@@ -63,11 +65,11 @@ export function useExecutionManager(llmClient: LLMClient): ExecutionManager {
       const response = await llmClient.generate(request)
       
       // Add response as assistant message
-      const newMessage = {
+      const newMessage: ChatMessage = {
         id: `msg-${Date.now()}`,
-        role: 'assistant' as const,
+        role: 'assistant',
         content: response.content,
-        createdAt: Date.now()
+        timestamp: Date.now()
       }
       
       addMessageToNode(nodeId, newMessage)
@@ -122,7 +124,8 @@ export function useExecutionManager(llmClient: LLMClient): ExecutionManager {
   
   const getNodeStatus = useCallback((nodeId: string): 'idle' | 'running' | 'success' | 'error' => {
     const node = nodes.find(n => n.id === nodeId)
-    return node?.data.status || 'idle'
+    const nodeData = node?.data as any
+    return nodeData?.status || 'idle'
   }, [nodes])
   
   return {
