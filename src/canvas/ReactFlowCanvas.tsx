@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ReactFlow,
   MiniMap,
@@ -9,33 +9,32 @@ import {
   type Connection,
   type NodeChange,
   type EdgeChange,
+  addEdge,
 } from '@xyflow/react'
 
 import '@xyflow/react/dist/style.css'
 import { nodeTypes } from '@/components/node-types'
 import { useStore } from '@/state/store'
+import { validateNoCycle } from '@/algorithms/collectUpstreamContext'
+import type { ChatNodeData } from '@/types'
 
-const DEFAULT_NODES: Node[] = [
+const DEFAULT_NODES: Node<ChatNodeData>[] = [
   {
-    id: 'node-1',
-    type: 'baseNodeCustom',
-    position: { x: 120, y: 80 },
-    data: { label: 'Idea Starter' },
-  },
-  {
-    id: 'node-2',
-    type: 'baseNodeCustom',
-    position: { x: 420, y: 260 },
-    data: { label: 'Refine Output' },
+    id: 'node-chat-1',
+    type: 'chat',
+    position: { x: 200, y: 120 },
+    data: {
+      label: 'Chat Node',
+      description: 'Draft prompts and iterate quickly',
+      model: 'gpt-4',
+      prompt: '',
+      messages: [],
+      status: 'idle',
+    },
   },
 ]
 
 const DEFAULT_EDGES: Edge[] = [
-  {
-    id: 'edge-1-2',
-    source: 'node-1',
-    target: 'node-2',
-  },
 ]
 
 interface ReactFlowCanvasProps {
@@ -50,6 +49,7 @@ export default function ReactFlowCanvas({ projectId: _projectId }: ReactFlowCanv
   const applyNodeChanges = useStore(state => state.applyNodeChanges)
   const applyEdgeChanges = useStore(state => state.applyEdgeChanges)
   const connectEdge = useStore(state => state.connectEdge)
+  const removeEdgesConnectedToNode = useStore(state => state.removeEdgesConnectedToNode)
 
   useEffect(() => {
     if (nodes.length === 0 && edges.length === 0) {
@@ -57,6 +57,29 @@ export default function ReactFlowCanvas({ projectId: _projectId }: ReactFlowCanv
       setEdges(DEFAULT_EDGES)
     }
   }, [nodes.length, edges.length, setNodes, setEdges])
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const toastTimerRef = useRef<number | null>(null)
+
+  const showToast = useCallback((message: string) => {
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current)
+    }
+
+    setToastMessage(message)
+    toastTimerRef.current = window.setTimeout(() => {
+      setToastMessage(null)
+      toastTimerRef.current = null
+    }, 3000)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        window.clearTimeout(toastTimerRef.current)
+      }
+    }
+  }, [])
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -74,20 +97,60 @@ export default function ReactFlowCanvas({ projectId: _projectId }: ReactFlowCanv
 
   const handleConnect = useCallback(
     (connection: Connection) => {
+      if (!connection.source || !connection.target) {
+        return
+      }
+
+      if (connection.source === connection.target) {
+        showToast('Cannot create a connection to the same node.')
+        return
+      }
+
+      const hasDuplicate = edges.some(
+        edge => edge.source === connection.source && edge.target === connection.target
+      )
+
+      if (hasDuplicate) {
+        showToast('These nodes are already connected.')
+        return
+      }
+
+      const nextEdges = addEdge(connection, edges)
+      const nodeIds = nodes.map(node => node.id)
+      const isAcyclic = validateNoCycle(nodeIds, nextEdges)
+
+      if (!isAcyclic) {
+        showToast('This connection would create a cycle. Choose a different target.')
+        return
+      }
+
       connectEdge(connection)
     },
-    [connectEdge]
+    [connectEdge, edges, nodes, showToast]
   )
 
+  const handleNodesDelete = useCallback(
+    (deletedNodes: Node[]) => {
+      deletedNodes.forEach(node => {
+        removeEdgesConnectedToNode(node.id)
+      })
+    },
+    [removeEdgesConnectedToNode]
+  )
+
+  const memoizedNodes = useMemo(() => nodes, [nodes])
+  const memoizedEdges = useMemo(() => edges, [edges])
+
   return (
-    <div className="flex-1 bg-gray-50">
+    <div className="relative flex-1 bg-gray-50">
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
+        nodes={memoizedNodes}
+        edges={memoizedEdges}
         nodeTypes={nodeTypes}
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onConnect={handleConnect}
+        onNodesDelete={handleNodesDelete}
         fitView
         fitViewOptions={{ padding: 0.2 }}
       >
@@ -95,6 +158,11 @@ export default function ReactFlowCanvas({ projectId: _projectId }: ReactFlowCanv
         <Controls />
         <Background />
       </ReactFlow>
+      {toastMessage && (
+        <div className="pointer-events-none absolute right-4 top-4 rounded-md bg-slate-900/90 px-4 py-2 text-sm text-white shadow-lg">
+          {toastMessage}
+        </div>
+      )}
     </div>
   )
 }

@@ -49,5 +49,5 @@ export interface ProjectSnapshot {
     maxTokens: number;
     temperature: number;
   };
-  history: any;
+  history: unknown;
 }
