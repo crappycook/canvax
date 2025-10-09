@@ -32,12 +32,10 @@ export function SettingsModal() {
   const { projectId } = useParams<{ projectId: string }>()
   const dismissPath = projectId ? `/project/${projectId}` : '/'
 
-  const { settings, updateSettings, setApiKey, removeApiKey } = useStore(state => ({
-    settings: state.settings,
-    updateSettings: state.updateSettings,
-    setApiKey: state.setApiKey,
-    removeApiKey: state.removeApiKey,
-  }))
+  const settings = useStore(state => state.settings)
+  const updateSettings = useStore(state => state.updateSettings)
+  const setApiKey = useStore(state => state.setApiKey)
+  const removeApiKey = useStore(state => state.removeApiKey)
 
   const [defaultModel, setDefaultModel] = useState(() => {
     const current = settings.defaultModel
