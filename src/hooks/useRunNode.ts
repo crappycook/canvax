@@ -1,116 +1,105 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useStore } from '@/state/store'
 import { useExecutionManager } from './useExecutionManager'
 import { LLMClient } from '@/services/llmClient'
+import type { ChatNodeData } from '@/types'
 
 export interface UseRunNodeReturn {
   // Execution status
   isRunning: boolean
   error: Error | null
-  
+
   // Actions
   run: () => Promise<void>
   stop: () => void
-  retry: () => void
-  
+  retry: () => Promise<void>
+
   // Status helpers
   canRun: boolean
   hasError: boolean
   requiresApiKey: boolean
 }
 
+const llmClient = new LLMClient()
+
 export function useRunNode(nodeId: string | null): UseRunNodeReturn {
-  const { nodes, settings } = useStore()
-  
-  // Create LLM client instance (mock for now)
-  const llmClient = new LLMClient()
-  
-  // Use execution manager
-  const executionManager = useExecutionManager(llmClient)
-  
-  // Early return if no nodeId
-  if (!nodeId) {
-    return {
-      isRunning: false,
-      error: null,
-      run: async () => {},
-      stop: () => {},
-      retry: async () => {},
-      canRun: false,
-      hasError: false,
-      requiresApiKey: false
-    }
-  }
-  
-  // Get node data
-  const node = nodes.find(n => n.id === nodeId)
-  const nodeData = node?.data
-  
-  // Check if API key is available for the default provider
-  const hasApiKey = settings.apiKeys && Object.keys(settings.apiKeys).length > 0
-  
-  // Check if node can be run
-  const canRun = Boolean(
-    node &&
-    nodeData && 
-    typeof nodeData === 'object' &&
-    'prompt' in nodeData &&
-    typeof (nodeData as any).prompt === 'string' &&
-    (nodeData as any).prompt?.trim() &&
-    'model' in nodeData &&
-    typeof (nodeData as any).model === 'string' &&
-    hasApiKey &&
-    executionManager.getNodeStatus(nodeId) !== 'running'
+  const [lastError, setLastError] = useState<Error | null>(null)
+
+  const settings = useStore(state => state.settings)
+
+  const node = useStore(
+    useCallback(
+      state => (nodeId ? state.nodes.find(n => n.id === nodeId) ?? null : null),
+      [nodeId]
+    )
   )
-  
-  // Check if node has error
-  const hasError = executionManager.getNodeStatus(nodeId) === 'error'
-  
-  // Get execution status
-  const isRunning = executionManager.getNodeStatus(nodeId) === 'running'
-  
-  // Run function
+
+  const nodeData = node?.data as ChatNodeData | undefined
+
+  const executionManager = useExecutionManager(llmClient)
+
+  const requiresApiKey = useMemo(() => {
+    const apiKeys = settings.apiKeys ?? {}
+    return Object.values(apiKeys).every(key => !key)
+  }, [settings.apiKeys])
+
+  const status = nodeData?.status ?? 'idle'
+  const isRunning = status === 'running'
+  const hasError = status === 'error'
+
+  const prompt = typeof nodeData?.prompt === 'string' ? nodeData.prompt.trim() : ''
+  const canRun = Boolean(!requiresApiKey && prompt && nodeData?.model && !isRunning)
+
   const run = useCallback(async () => {
-    if (!nodeId) return
-    
+    if (!nodeId || !canRun) return
+
+    setLastError(null)
+
     try {
-      // Reset any previous errors
-      if (hasError) {
-        // Clear error state
-        const { setNodeStatus } = useStore.getState()
-        setNodeStatus(nodeId, 'idle')
-      }
-      
       await executionManager.executeNode(nodeId)
-    } catch (err) {
-      console.error('Failed to run node:', err)
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return
+      }
+
+      const fallbackError =
+        error instanceof Error ? error : new Error('Failed to run node')
+      setLastError(fallbackError)
     }
-  }, [nodeId, hasError, executionManager])
-  
-  // Stop function
+  }, [nodeId, canRun, executionManager])
+
   const stop = useCallback(() => {
-    executionManager.stopExecution()
-  }, [executionManager])
-  
-  // Retry function
+    if (!nodeId) return
+    executionManager.stopExecution(nodeId)
+  }, [nodeId, executionManager])
+
   const retry = useCallback(async () => {
     if (!nodeId) return
-    
-    // Clear error state before retry
-    const { setNodeStatus } = useStore.getState()
+
+    const { setNodeStatus, updateNode } = useStore.getState()
     setNodeStatus(nodeId, 'idle')
-    
-    await executionManager.executeNode(nodeId)
-  }, [nodeId, executionManager])
-  
+    updateNode(nodeId, { error: undefined })
+    setLastError(null)
+
+    await run()
+  }, [nodeId, run])
+
+  const combinedError = useMemo(() => {
+    if (lastError) return lastError
+    if (hasError && nodeData?.error) {
+      return new Error(nodeData.error)
+    }
+    return null
+  }, [hasError, nodeData?.error, lastError])
+
   return {
     isRunning,
-    error: null, // Simplified for now
+    error: combinedError,
     run,
     stop,
     retry,
     canRun,
     hasError,
-    requiresApiKey: !hasApiKey
+    requiresApiKey,
   }
 }

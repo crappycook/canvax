@@ -29,6 +29,6 @@ const buttonVariants = cva(
   }
 )
 
-export interface ButtonVariants extends VariantProps<typeof buttonVariants> {}
+export type ButtonVariants = VariantProps<typeof buttonVariants>
 
 export { buttonVariants }

@@ -5,18 +5,18 @@ export interface RuntimeSlice {
   executionQueue: string[]
   currentExecution: string | null
   executionResults: Map<string, { success: boolean; output?: string; error?: string }>
-  
+
   // Execution control
   startExecution: (nodeId?: string) => void
-  stopExecution: () => void
+  stopExecution: (nodeId?: string) => void
   pauseExecution: () => void
   resumeExecution: () => void
-  
+
   // Queue management
   enqueueNode: (nodeId: string) => void
   dequeueNode: () => string | null
   clearQueue: () => void
-  
+
   // Results
   getExecutionResult: (nodeId: string) => { success: boolean; output?: string; error?: string } | null
   setExecutionResult: (nodeId: string, result: { success: boolean; output?: string; error?: string }) => void
@@ -30,18 +30,45 @@ export const createRuntimeSlice: StateCreator<RuntimeSlice> = (set, get) => ({
   executionResults: new Map(),
 
   startExecution: (nodeId) => {
-    if (nodeId) {
-      set({ executionQueue: [nodeId], isRunning: true })
-    } else {
-      set({ isRunning: true })
-    }
+    set((state) => {
+      const alreadyQueued = nodeId ? state.executionQueue.includes(nodeId) : false
+      const executionQueue = nodeId
+        ? alreadyQueued
+          ? state.executionQueue
+          : [...state.executionQueue, nodeId]
+        : state.executionQueue
+
+      const currentExecution = state.currentExecution ?? nodeId ?? null
+
+      return {
+        isRunning: true,
+        executionQueue,
+        currentExecution,
+      }
+    })
   },
 
-  stopExecution: () => {
-    set({ 
-      isRunning: false, 
-      executionQueue: [], 
-      currentExecution: null 
+  stopExecution: (nodeId) => {
+    if (!nodeId) {
+      set({
+        isRunning: false,
+        executionQueue: [],
+        currentExecution: null,
+      })
+      return
+    }
+
+    set((state) => {
+      const executionQueue = state.executionQueue.filter((queuedId) => queuedId !== nodeId)
+      const currentExecution = state.currentExecution === nodeId
+        ? executionQueue[0] ?? null
+        : state.currentExecution
+
+      return {
+        isRunning: executionQueue.length > 0,
+        executionQueue,
+        currentExecution,
+      }
     })
   },
 
@@ -55,20 +82,22 @@ export const createRuntimeSlice: StateCreator<RuntimeSlice> = (set, get) => ({
 
   enqueueNode: (nodeId) => {
     set((state) => ({
-      executionQueue: [...state.executionQueue, nodeId]
+      executionQueue: state.executionQueue.includes(nodeId)
+        ? state.executionQueue
+        : [...state.executionQueue, nodeId],
     }))
   },
 
   dequeueNode: () => {
     const state = get()
     if (state.executionQueue.length === 0) return null
-    
-    const nextNodeId = state.executionQueue[0]
+
+    const [nextNodeId, ...rest] = state.executionQueue
     set({
-      executionQueue: state.executionQueue.slice(1),
-      currentExecution: nextNodeId
+      executionQueue: rest,
+      currentExecution: nextNodeId,
     })
-    
+
     return nextNodeId
   },
 
@@ -91,5 +120,5 @@ export const createRuntimeSlice: StateCreator<RuntimeSlice> = (set, get) => ({
 
   clearResults: () => {
     set({ executionResults: new Map() })
-  }
+  },
 })

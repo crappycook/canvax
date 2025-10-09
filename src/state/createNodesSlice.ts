@@ -158,27 +158,28 @@ export const createNodesSlice: StateCreator<NodesSlice> = (set, get) => ({
   }
 })
 
+type MutableChatNodeData = ChatNodeData & Record<string, unknown>
+
 function updateData(
   data: Node['data'],
-  updater: (draft: ChatNodeData & Record<string, any>) => void,
+  updater: (draft: MutableChatNodeData) => void,
 ) {
-  const draft: ChatNodeData & Record<string, any> =
-    typeof data === 'object' && data !== null
-      ? {
-        label: (data as any).label || 'Untitled',
-        model: (data as any).model || 'gpt-4',
-        prompt: (data as any).prompt || '',
-        messages: (data as any).messages || [],
-        status: (data as any).status || 'idle',
-        ...(data as Record<string, any>)
-      }
-      : ({
-        label: 'Untitled',
-        model: 'gpt-4',
-        prompt: '',
-        messages: [],
-        status: 'idle'
-      } as ChatNodeData & Record<string, any>)
+  const incoming = (typeof data === 'object' && data !== null
+    ? data
+    : {}) as Partial<ChatNodeData> & Record<string, unknown>
+
+  const draft: MutableChatNodeData = {
+    label: typeof incoming.label === 'string' ? incoming.label : 'Untitled',
+    model: typeof incoming.model === 'string' ? incoming.model : 'gpt-4',
+    prompt: typeof incoming.prompt === 'string' ? incoming.prompt : '',
+    messages: Array.isArray(incoming.messages)
+      ? (incoming.messages as ChatMessage[])
+      : [],
+    status: incoming.status ?? 'idle',
+    error: incoming.error,
+    ...incoming,
+  }
+
   updater(draft)
   return draft
 }

@@ -1,46 +1,51 @@
-import React, { useRef, useEffect } from 'react';
-import { Textarea } from './ui/textarea';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import { Textarea } from './ui/textarea'
 
 interface PromptEditorProps {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  disabled?: boolean;
-  autoFocus?: boolean;
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+  disabled?: boolean
+  autoFocus?: boolean
 }
 
-export const PromptEditor: React.FC<PromptEditorProps> = ({
-  value,
-  onChange,
-  placeholder = "Enter your prompt...",
-  disabled = false,
-  autoFocus = false,
-}) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+export const PromptEditor = forwardRef<HTMLTextAreaElement, PromptEditorProps>(
+  ({
+    value,
+    onChange,
+    placeholder = 'Enter your prompt...',
+    disabled = false,
+    autoFocus = false,
+  }, ref) => {
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Auto-resize functionality
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = `${textarea.scrollHeight}px`;
+    useImperativeHandle(ref, () => textareaRef.current, [])
+
+    useEffect(() => {
+      const textarea = textareaRef.current
+      if (textarea) {
+        textarea.style.height = 'auto'
+        textarea.style.height = `${textarea.scrollHeight}px`
+      }
+    }, [value])
+
+    const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      onChange(event.target.value)
     }
-  }, [value]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.value);
-  };
+    return (
+      <Textarea
+        ref={textareaRef}
+        value={value}
+        onChange={handleChange}
+        placeholder={placeholder}
+        disabled={disabled}
+        autoFocus={autoFocus}
+        className="min-h-[80px] resize-none overflow-hidden"
+        rows={3}
+      />
+    )
+  }
+)
 
-  return (
-    <Textarea
-      ref={textareaRef}
-      value={value}
-      onChange={handleChange}
-      placeholder={placeholder}
-      disabled={disabled}
-      autoFocus={autoFocus}
-      className="min-h-[80px] resize-none overflow-hidden"
-      rows={3}
-    />
-  );
-};
+PromptEditor.displayName = 'PromptEditor'

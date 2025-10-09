@@ -12,6 +12,10 @@ export interface LLMRequest {
   maxTokens?: number
 }
 
+export interface LLMRequestOptions {
+  signal?: AbortSignal
+}
+
 export interface LLMResponse {
   content: string
   usage?: { promptTokens: number; completionTokens: number }
@@ -51,21 +55,43 @@ export class LLMClient {
   }
   
   // Core LLM operations (mock implementation for MVP)
-  async generate(request: LLMRequest): Promise<LLMResponse> {
-    // Mock implementation for MVP
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
+  async generate(request: LLMRequest, options: LLMRequestOptions = {}): Promise<LLMResponse> {
+    const { signal } = options
+
+    if (signal?.aborted) {
+      throw new DOMException('The request was aborted before it started', 'AbortError')
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        if (signal) {
+          signal.removeEventListener('abort', abortHandler)
+        }
+        resolve()
+      }, 1000)
+
+      const abortHandler = () => {
+        clearTimeout(timeout)
+        signal?.removeEventListener('abort', abortHandler)
+        reject(new DOMException('The request was aborted', 'AbortError'))
+      }
+
+      if (signal) {
+        signal.addEventListener('abort', abortHandler, { once: true })
+      }
+    })
+
     const mockResponse = `Mock response for ${request.model}. Messages received: ${request.messages.length}`
-    
+
     return {
       content: mockResponse,
       usage: { promptTokens: 100, completionTokens: 50 }
     }
   }
-  
-  async streamGenerate(request: LLMRequest, onChunk: (chunk: string) => void): Promise<void> {
+
+  async streamGenerate(request: LLMRequest, onChunk: (chunk: string) => void, options: LLMRequestOptions = {}): Promise<void> {
     // Mock implementation for MVP
-    const response = await this.generate(request)
+    const response = await this.generate(request, options)
     
     // Simulate streaming by breaking response into chunks
     const words = response.content.split(' ')
