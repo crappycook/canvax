@@ -1,10 +1,6 @@
-import providersConfig from '@/config/llmProviders.json' with { type: 'json' }
+import { llmProviders, type LLMProviderDefinition } from '@/config/llmProviders'
 
-export interface LLMProvider {
-  id: string
-  name: string
-  models: string[]
-}
+export type LLMProvider = LLMProviderDefinition
 
 export interface LLMRequest {
   model: string
@@ -22,40 +18,75 @@ export interface LLMResponse {
   usage?: { promptTokens: number; completionTokens: number }
 }
 
-const defaultProviders = providersConfig as LLMProvider[]
-
 export class LLMClient {
-  private providers: Map<string, LLMProvider> = new Map(
-    defaultProviders.map(provider => [provider.id, provider])
-  )
+  private providers: Map<string, LLMProvider> = new Map()
+  private modelToProvider: Map<string, LLMProvider> = new Map()
   private apiKeys: Map<string, string> = new Map()
-  
+
+  constructor(initialProviders: LLMProvider[] = llmProviders) {
+    initialProviders.forEach(provider => {
+      this.registerProvider(provider)
+    })
+  }
+
   // Provider management
   registerProvider(provider: LLMProvider): void {
     this.providers.set(provider.id, provider)
+    provider.models.forEach(model => {
+      this.modelToProvider.set(model.id, provider)
+    })
   }
-  
+
   unregisterProvider(providerId: string): void {
+    const provider = this.providers.get(providerId)
+    if (provider) {
+      provider.models.forEach(model => {
+        this.modelToProvider.delete(model.id)
+      })
+    }
     this.providers.delete(providerId)
   }
-  
+
   getAvailableProviders(): LLMProvider[] {
     return Array.from(this.providers.values())
   }
-  
+
+  getProviderById(providerId: string): LLMProvider | undefined {
+    return this.providers.get(providerId)
+  }
+
+  getProviderForModel(modelId: string): LLMProvider | undefined {
+    return this.modelToProvider.get(modelId)
+  }
+
   // API key management
   setApiKey(providerId: string, key: string): void {
-    this.apiKeys.set(providerId, key)
+    const trimmedKey = key.trim()
+    if (!trimmedKey) {
+      this.apiKeys.delete(providerId)
+      return
+    }
+    this.apiKeys.set(providerId, trimmedKey)
   }
-  
+
   removeApiKey(providerId: string): void {
     this.apiKeys.delete(providerId)
   }
-  
+
   hasApiKey(providerId: string): boolean {
-    return this.apiKeys.has(providerId) && this.apiKeys.get(providerId) !== ''
+    return this.apiKeys.has(providerId) && (this.apiKeys.get(providerId) ?? '').trim() !== ''
   }
-  
+
+  syncApiKeys(apiKeys: Record<string, string>): void {
+    this.apiKeys.clear()
+    Object.entries(apiKeys).forEach(([providerId, key]) => {
+      const trimmedKey = key.trim()
+      if (trimmedKey) {
+        this.apiKeys.set(providerId, trimmedKey)
+      }
+    })
+  }
+
   // Core LLM operations (mock implementation for MVP)
   async generate(request: LLMRequest, options: LLMRequestOptions = {}): Promise<LLMResponse> {
     const { signal } = options
@@ -107,11 +138,12 @@ export class LLMClient {
   async validateApiKey(providerId: string): Promise<boolean> {
     // Mock implementation for MVP
     const key = this.apiKeys.get(providerId)
-    return !!key && key.length > 0
+    return !!key && key.trim().length > 0
   }
-  
+
   async getModels(providerId: string): Promise<string[]> {
     const provider = this.providers.get(providerId)
-    return provider ? provider.models : []
+    if (!provider) return []
+    return provider.models.map(model => model.id)
   }
 }

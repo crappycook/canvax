@@ -1,33 +1,37 @@
-import React from 'react';
-import { ChevronDown } from 'lucide-react';
-import { Button } from './ui/button';
+import { memo, useMemo } from 'react'
+import { ChevronDown } from 'lucide-react'
+import { Button } from './ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from './ui/dropdown-menu';
+} from './ui/dropdown-menu'
+import { llmModels, findModelById } from '@/config/llmProviders'
 
 interface ModelSelectorProps {
-  value: string;
-  onValueChange: (value: string) => void;
-  disabled?: boolean;
+  value?: string
+  onValueChange: (value: string) => void
+  disabled?: boolean
 }
 
-const MODELS = [
-  { value: 'claude-3-5-sonnet', label: 'Claude 3.5 Sonnet' },
-  { value: 'claude-3-opus', label: 'Claude 3 Opus' },
-  { value: 'gpt-4', label: 'GPT-4' },
-  { value: 'gpt-4o', label: 'GPT-4o' },
-  { value: 'gemini-pro', label: 'Gemini Pro' },
-];
-
-export const ModelSelector: React.FC<ModelSelectorProps> = ({
+export const ModelSelector = memo(function ModelSelector({
   value,
   onValueChange,
   disabled = false,
-}) => {
-  const selectedModel = MODELS.find(model => model.value === value) || MODELS[0];
+}: ModelSelectorProps) {
+  const options = llmModels
+
+  const selectedModel = useMemo(() => {
+    if (value) {
+      return findModelById(value)
+    }
+    return options[0]
+  }, [options, value])
+
+  const buttonLabel = selectedModel
+    ? `${selectedModel.label} · ${selectedModel.providerName}`
+    : value || 'Select a model'
 
   return (
     <DropdownMenu>
@@ -35,23 +39,30 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         <Button
           variant="outline"
           className="w-full justify-between"
-          disabled={disabled}
+          disabled={disabled || options.length === 0}
         >
-          {selectedModel.label}
+          <span className="truncate text-left">{buttonLabel}</span>
           <ChevronDown className="size-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-48">
-        {MODELS.map((model) => (
-          <DropdownMenuItem
-            key={model.value}
-            onClick={() => onValueChange(model.value)}
-            className="cursor-pointer"
-          >
-            {model.label}
-          </DropdownMenuItem>
-        ))}
+      <DropdownMenuContent align="start" className="w-64">
+        {options.length === 0 ? (
+          <div className="px-2 py-1.5 text-sm text-muted-foreground">No models available</div>
+        ) : (
+          options.map(model => (
+            <DropdownMenuItem
+              key={model.id}
+              onClick={() => onValueChange(model.id)}
+              className="cursor-pointer"
+            >
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">{model.label}</span>
+                <span className="text-xs text-muted-foreground">{model.providerName}</span>
+              </div>
+            </DropdownMenuItem>
+          ))
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
-  );
-};
+  )
+})
