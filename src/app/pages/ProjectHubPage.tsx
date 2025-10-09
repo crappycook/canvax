@@ -71,9 +71,9 @@ export default function ProjectHubPage() {
       if (snapshot) {
         const dataStr = JSON.stringify(snapshot, null, 2)
         const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(dataStr)}`
-        
+
         const exportFileDefaultName = `${snapshot.metadata.title}.canvax`
-        
+
         const linkElement = document.createElement('a')
         linkElement.setAttribute('href', dataUri)
         linkElement.setAttribute('download', exportFileDefaultName)
@@ -119,7 +119,7 @@ export default function ProjectHubPage() {
       <div className="w-full max-w-2xl space-y-8">
         <div className="text-center">
           <h1 className="text-4xl font-bold tracking-tight">
-            Canvas
+            Canvax
           </h1>
           <p className="mt-2 text-muted-foreground">
             Create and manage your AI workflow projects
@@ -133,7 +133,7 @@ export default function ProjectHubPage() {
             </p>
           )}
         </div>
-        
+
         <div className="space-y-4">
           <div className="flex gap-4">
             <Button className="flex-1" size="lg" onClick={handleCreateProject}>
@@ -152,12 +152,12 @@ export default function ProjectHubPage() {
               </label>
             </Button>
           </div>
-          
+
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-muted-foreground">
               Recent Projects
             </h3>
-            
+
             {isLoading ? (
               <div className="rounded-lg border bg-card p-4 text-center">
                 <p className="text-sm text-muted-foreground">Loading projects...</p>
@@ -188,7 +188,7 @@ export default function ProjectHubPage() {
                         Updated {formatDate(project.updatedAt)}
                       </p>
                     </div>
-                    
+
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button
                         variant="ghost"
