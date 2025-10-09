@@ -1,3 +1,4 @@
+import providersConfig from '@/config/llmProviders.json' with { type: 'json' }
 
 export interface LLMProvider {
   id: string
@@ -21,11 +22,12 @@ export interface LLMResponse {
   usage?: { promptTokens: number; completionTokens: number }
 }
 
+const defaultProviders = providersConfig as LLMProvider[]
+
 export class LLMClient {
-  private providers: Map<string, LLMProvider> = new Map([
-    ['openai', { id: 'openai', name: 'OpenAI', models: ['gpt-4', 'gpt-3.5-turbo'] }],
-    ['anthropic', { id: 'anthropic', name: 'Anthropic', models: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'] }]
-  ])
+  private providers: Map<string, LLMProvider> = new Map(
+    defaultProviders.map(provider => [provider.id, provider])
+  )
   private apiKeys: Map<string, string> = new Map()
   
   // Provider management
