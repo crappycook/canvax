@@ -17,10 +17,35 @@ export default function TopBar({ projectId }: TopBarProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [isLeaving, setIsLeaving] = useState(false)
 
-  const handleSave = useCallback(() => {
+  const isUntitledProject = useMemo(() => {
+    return projectTitle.trim() === 'Untitled Project'
+  }, [projectTitle])
+
+  const openRenameDialog = useCallback(() => {
     setTitleInput(projectTitle)
     setDialogOpen(true)
   }, [projectTitle])
+
+  const handleSave = useCallback(() => {
+    if (isSaving) return
+
+    if (isUntitledProject) {
+      openRenameDialog()
+      return
+    }
+
+    setIsSaving(true)
+    saveProject()
+      .catch(error => {
+        console.error('Failed to save project:', error)
+        if (typeof window !== 'undefined') {
+          window.alert('保存项目失败，请稍后重试。')
+        }
+      })
+      .finally(() => {
+        setIsSaving(false)
+      })
+  }, [isSaving, isUntitledProject, openRenameDialog, saveProject])
 
   const handleDialogClose = useCallback(() => {
     if (isSaving) return
@@ -44,6 +69,11 @@ export default function TopBar({ projectId }: TopBarProps) {
     try {
       await saveProject(titleInput)
       setDialogOpen(false)
+    } catch (error) {
+      console.error('Failed to save project:', error)
+      if (typeof window !== 'undefined') {
+        window.alert('保存项目失败，请稍后重试。')
+      }
     } finally {
       setIsSaving(false)
     }
@@ -52,6 +82,7 @@ export default function TopBar({ projectId }: TopBarProps) {
   const handleGoHome = useCallback(async () => {
     if (isLeaving) return
     setIsLeaving(true)
+    setIsSaving(true)
     try {
       await saveProject()
       navigate('/')
@@ -61,6 +92,7 @@ export default function TopBar({ projectId }: TopBarProps) {
         window.alert('保存项目失败，请先解决保存问题后再返回主页。')
       }
     } finally {
+      setIsSaving(false)
       setIsLeaving(false)
     }
   }, [isLeaving, saveProject, navigate])
@@ -73,23 +105,36 @@ export default function TopBar({ projectId }: TopBarProps) {
           aria-label="Back to homepage"
           disabled={isLeaving || isSaving}
           size="lg"
-          className="flex items-center gap-2 px-5 font-semibold"
+          variant="outline"
+          className="flex items-center gap-2 px-5 font-semibold shadow-sm"
         >
           <Home className="h-5 w-5" />
           <span>Home</span>
         </Button>
 
         <div className="flex flex-col">
-          <h1 className="text-lg font-semibold">{projectTitle}</h1>
+          <h1
+            className="text-lg font-semibold"
+            onDoubleClick={openRenameDialog}
+            title="Double-click to rename"
+          >
+            {projectTitle}
+          </h1>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             {projectId && <span>ID: {projectId}</span>}
-            <span>All changes saved</span>
+            <span>{isSaving ? 'Saving…' : 'All changes saved'}</span>
           </div>
         </div>
       </div>
-      
+
       <div className="flex items-center space-x-2">
-        <Button variant="outline" size="icon" onClick={handleSave} aria-label="Save project">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleSave}
+          aria-label="Save project"
+          disabled={isSaving}
+        >
           <Save className="h-4 w-4" />
         </Button>
 

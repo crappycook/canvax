@@ -25,7 +25,7 @@ export const ChatNode = memo(({ id, data }: ChatNodeProps) => {
   const clearNodeMessages = useStore(state => state.clearNodeMessages)
   const setNodeStatus = useStore(state => state.setNodeStatus)
 
-  const { run, stop, retry, isRunning, canRun, requiresApiKey } = useRunNode(nodeId)
+  const { run, stop, retry, isRunning, canRun, requiresApiKey, provider } = useRunNode(nodeId)
 
   const handleModelChange = useCallback(
     (newModel: string) => {
@@ -86,7 +86,7 @@ export const ChatNode = memo(({ id, data }: ChatNodeProps) => {
             <ModelSelector
               value={nodeData.model}
               onValueChange={handleModelChange}
-              disabled={isRunning || requiresApiKey}
+              disabled={isRunning}
             />
           </div>
 
@@ -97,14 +97,15 @@ export const ChatNode = memo(({ id, data }: ChatNodeProps) => {
               value={nodeData.prompt || ''}
               onChange={handlePromptChange}
               placeholder="Enter your message..."
-              disabled={isRunning || requiresApiKey}
+              disabled={isRunning}
             />
           </div>
 
           {requiresApiKey && (
             <div className="rounded bg-yellow-50 p-3 text-sm text-yellow-700">
               <AlertCircle className="mr-2 inline size-4" />
-              API key required to run this node. Please check settings.
+              {provider ? `${provider.name} API key required to run this node.` : 'API key required to run this node.'}{' '}
+              Please check settings.
             </div>
           )}
 
@@ -160,7 +161,7 @@ export const ChatNode = memo(({ id, data }: ChatNodeProps) => {
             <Button
               size="sm"
               onClick={isRunning ? handleStop : handleRun}
-              disabled={(!canRun && !isRunning) || requiresApiKey}
+              disabled={!isRunning && !canRun}
               variant={isRunning ? 'outline' : 'default'}
             >
               {isRunning ? (

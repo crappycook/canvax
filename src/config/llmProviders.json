@@ -2,11 +2,39 @@
   {
     "id": "openai",
     "name": "OpenAI",
-    "models": ["gpt-4", "gpt-3.5-turbo"]
+    "requiresApiKey": true,
+    "models": [
+      { "id": "gpt-4o", "label": "GPT-4o" },
+      { "id": "gpt-4", "label": "GPT-4" },
+      { "id": "gpt-3.5-turbo", "label": "GPT-3.5 Turbo" }
+    ]
   },
   {
     "id": "anthropic",
     "name": "Anthropic",
-    "models": ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
+    "requiresApiKey": true,
+    "models": [
+      { "id": "claude-3-5-sonnet", "label": "Claude 3.5 Sonnet" },
+      { "id": "claude-3-opus", "label": "Claude 3 Opus" },
+      { "id": "claude-3-sonnet", "label": "Claude 3 Sonnet" },
+      { "id": "claude-3-haiku", "label": "Claude 3 Haiku" }
+    ]
+  },
+  {
+    "id": "google",
+    "name": "Google Gemini",
+    "requiresApiKey": true,
+    "models": [
+      { "id": "gemini-pro", "label": "Gemini Pro" }
+    ]
+  },
+  {
+    "id": "deepseek",
+    "name": "DeepSeek",
+    "requiresApiKey": true,
+    "models": [
+      { "id": "deepseek-chat", "label": "DeepSeek Chat" },
+      { "id": "deepseek-coder", "label": "DeepSeek Coder" }
+    ]
   }
 ]

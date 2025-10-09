@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useStore } from '@/state/store'
 import { useExecutionManager } from './useExecutionManager'
 import { LLMClient } from '@/services/llmClient'
 import type { ChatNodeData } from '@/types'
+import { findProviderByModel } from '@/config/llmProviders'
 
 export interface UseRunNodeReturn {
   // Execution status
@@ -18,6 +19,7 @@ export interface UseRunNodeReturn {
   canRun: boolean
   hasError: boolean
   requiresApiKey: boolean
+  provider: ReturnType<typeof findProviderByModel>
 }
 
 const llmClient = new LLMClient()
@@ -38,17 +40,27 @@ export function useRunNode(nodeId: string | null): UseRunNodeReturn {
 
   const executionManager = useExecutionManager(llmClient)
 
-  const requiresApiKey = useMemo(() => {
-    const apiKeys = settings.apiKeys ?? {}
-    return Object.values(apiKeys).every(key => !key)
+  useEffect(() => {
+    llmClient.syncApiKeys(settings.apiKeys ?? {})
   }, [settings.apiKeys])
+
+  const selectedModel = nodeData?.model || settings.defaultModel
+
+  const provider = useMemo(() => findProviderByModel(selectedModel), [selectedModel])
+
+  const requiresApiKey = useMemo(() => {
+    if (!provider) return false
+    if (!provider.requiresApiKey) return false
+    const apiKey = settings.apiKeys?.[provider.id]
+    return !apiKey || apiKey.trim().length === 0
+  }, [provider, settings.apiKeys])
 
   const status = nodeData?.status ?? 'idle'
   const isRunning = status === 'running'
   const hasError = status === 'error'
 
   const prompt = typeof nodeData?.prompt === 'string' ? nodeData.prompt.trim() : ''
-  const canRun = Boolean(!requiresApiKey && prompt && nodeData?.model && !isRunning)
+  const canRun = Boolean(provider && !requiresApiKey && prompt && selectedModel && !isRunning)
 
   const run = useCallback(async () => {
     if (!nodeId || !canRun) return
@@ -101,5 +113,6 @@ export function useRunNode(nodeId: string | null): UseRunNodeReturn {
     canRun,
     hasError,
     requiresApiKey,
+    provider,
   }
 }
