@@ -5,6 +5,28 @@ import { X } from 'lucide-react'
 import { useStore } from '@/state/store'
 import { llmModels, llmProviders } from '@/config/llmProviders'
 
+function buildApiKeyDraft(apiKeys: Record<string, string> | undefined) {
+  const draft: Record<string, string> = {}
+  llmProviders.forEach(provider => {
+    draft[provider.id] = apiKeys?.[provider.id] ?? ''
+  })
+  return draft
+}
+
+function areApiKeyDraftsEqual(
+  prev: Record<string, string>,
+  next: Record<string, string>
+) {
+  if (Object.keys(prev).length !== Object.keys(next).length) {
+    return false
+  }
+
+  return llmProviders.every(provider => {
+    const providerId = provider.id
+    return (prev[providerId] ?? '') === (next[providerId] ?? '')
+  })
+}
+
 export function SettingsModal() {
   const navigate = useNavigate()
   const { projectId } = useParams<{ projectId: string }>()
@@ -23,37 +45,25 @@ export function SettingsModal() {
     return hasCurrent ? current : llmModels[0]?.id ?? ''
   })
   const [language, setLanguage] = useState(settings.language)
-  const createApiKeyDraft = useCallback(() => {
-    const draft: Record<string, string> = {}
-    llmProviders.forEach(provider => {
-      draft[provider.id] = settings.apiKeys?.[provider.id] ?? ''
-    })
-    return draft
-  }, [settings.apiKeys])
-
-  const [apiKeys, setApiKeys] = useState<Record<string, string>>(() => createApiKeyDraft())
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>(() =>
+    buildApiKeyDraft(settings.apiKeys)
+  )
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     const hasCurrent = llmModels.some(model => model.id === settings.defaultModel)
-    setDefaultModel(hasCurrent ? settings.defaultModel : llmModels[0]?.id ?? '')
+    const nextDefault = hasCurrent ? settings.defaultModel : llmModels[0]?.id ?? ''
+    setDefaultModel(prev => (prev === nextDefault ? prev : nextDefault))
   }, [settings.defaultModel])
 
   useEffect(() => {
-    setLanguage(settings.language)
+    setLanguage(prev => (prev === settings.language ? prev : settings.language))
   }, [settings.language])
 
   useEffect(() => {
-    const next = createApiKeyDraft()
-    setApiKeys(prev => {
-      const nextEntries = Object.entries(next)
-      const hasDifference =
-        nextEntries.length !== Object.keys(prev).length ||
-        nextEntries.some(([providerId, key]) => (prev[providerId] ?? '') !== key)
-
-      return hasDifference ? next : prev
-    })
-  }, [createApiKeyDraft])
+    const nextDraft = buildApiKeyDraft(settings.apiKeys)
+    setApiKeys(prev => (areApiKeyDraftsEqual(prev, nextDraft) ? prev : nextDraft))
+  }, [settings.apiKeys])
 
   const handleClose = useCallback(() => {
     navigate(dismissPath, { replace: true })
