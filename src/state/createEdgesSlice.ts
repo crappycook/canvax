@@ -22,6 +22,8 @@ export interface EdgesSlice {
   getIncomingEdges: (nodeId: string) => Edge[]
   getOutgoingEdges: (nodeId: string) => Edge[]
   getConnectedNodes: (nodeId: string) => string[]
+  getEdgesBySource: (nodeId: string) => Edge[]
+  getEdgesByTarget: (nodeId: string) => Edge[]
 }
 
 export const createEdgesSlice: StateCreator<EdgesSlice> = (set, get) => ({
@@ -83,5 +85,15 @@ export const createEdgesSlice: StateCreator<EdgesSlice> = (set, get) => ({
     })
 
     return Array.from(connected)
+  },
+
+  getEdgesBySource: (nodeId) => {
+    const state = get()
+    return state.edges.filter((edge) => edge.source === nodeId)
+  },
+
+  getEdgesByTarget: (nodeId) => {
+    const state = get()
+    return state.edges.filter((edge) => edge.target === nodeId)
   }
 })

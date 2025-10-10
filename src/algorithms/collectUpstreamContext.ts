@@ -6,65 +6,161 @@ export interface ExecutionContext {
   upstreamNodes: Node<ChatNodeData>[]
   messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>
   executionOrder: string[]
+  hasErrors: boolean
+  errorNodes: string[]
+  isComplete: boolean
 }
 
+/**
+ * Collects upstream context for a target node using topological sorting
+ * Ensures messages are collected in proper execution order and deduplicated
+ */
 export function collectUpstreamContext(
   targetNodeId: string,
   nodes: Node<ChatNodeData>[],
   edges: Edge[]
 ): ExecutionContext {
-  const visited = new Set<string>()
-  const executionOrder: string[] = []
-  const upstreamNodes: Node<ChatNodeData>[] = []
-  const messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = []
+  // Build adjacency list for topological sort
+  const adjacencyList = new Map<string, string[]>()
+  const inDegree = new Map<string, number>()
   
-  function traverse(nodeId: string): void {
-    if (visited.has(nodeId)) return
-    visited.add(nodeId)
+  // Initialize all nodes
+  nodes.forEach(node => {
+    adjacencyList.set(node.id, [])
+    inDegree.set(node.id, 0)
+  })
+  
+  // Build graph
+  edges.forEach(edge => {
+    const sources = adjacencyList.get(edge.source) || []
+    sources.push(edge.target)
+    adjacencyList.set(edge.source, sources)
+    inDegree.set(edge.target, (inDegree.get(edge.target) || 0) + 1)
+  })
+  
+  // Find all upstream nodes using BFS from target (going backwards)
+  const upstreamNodeIds = new Set<string>()
+  const queue: string[] = []
+  
+  // Start from target node and traverse backwards
+  const incomingEdges = edges.filter(e => e.target === targetNodeId)
+  incomingEdges.forEach(edge => {
+    queue.push(edge.source)
+    upstreamNodeIds.add(edge.source)
+  })
+  
+  while (queue.length > 0) {
+    const currentId = queue.shift()!
+    const incoming = edges.filter(e => e.target === currentId)
     
+    incoming.forEach(edge => {
+      if (!upstreamNodeIds.has(edge.source)) {
+        upstreamNodeIds.add(edge.source)
+        queue.push(edge.source)
+      }
+    })
+  }
+  
+  // Perform topological sort on upstream nodes only
+  const executionOrder: string[] = []
+  const tempInDegree = new Map<string, number>()
+  const sortQueue: string[] = []
+  
+  // Initialize in-degrees for upstream nodes only
+  upstreamNodeIds.forEach(nodeId => {
+    const degree = edges.filter(e => 
+      e.target === nodeId && upstreamNodeIds.has(e.source)
+    ).length
+    tempInDegree.set(nodeId, degree)
+    
+    if (degree === 0) {
+      sortQueue.push(nodeId)
+    }
+  })
+  
+  // Kahn's algorithm for topological sort
+  while (sortQueue.length > 0) {
+    const currentId = sortQueue.shift()!
+    executionOrder.push(currentId)
+    
+    const outgoing = edges.filter(e => 
+      e.source === currentId && upstreamNodeIds.has(e.target)
+    )
+    
+    outgoing.forEach(edge => {
+      const newDegree = (tempInDegree.get(edge.target) || 0) - 1
+      tempInDegree.set(edge.target, newDegree)
+      
+      if (newDegree === 0) {
+        sortQueue.push(edge.target)
+      }
+    })
+  }
+  
+  // Collect upstream nodes in topological order
+  const upstreamNodes: Node<ChatNodeData>[] = []
+  const errorNodes: string[] = []
+  let hasErrors = false
+  
+  executionOrder.forEach(nodeId => {
+    const node = nodes.find(n => n.id === nodeId)
+    if (node) {
+      upstreamNodes.push(node)
+      
+      // Check for error status
+      if (node.data.status === 'error') {
+        hasErrors = true
+        errorNodes.push(nodeId)
+      }
+    }
+  })
+  
+  // Collect and deduplicate messages in topological order
+  const messagesMap = new Map<string, { 
+    role: 'user' | 'assistant' | 'system'
+    content: string
+    timestamp: number
+    nodeId: string
+  }>()
+  
+  executionOrder.forEach(nodeId => {
     const node = nodes.find(n => n.id === nodeId)
     if (!node) return
     
-    // Add node to execution order (topological - depth first)
-    executionOrder.push(nodeId)
-    upstreamNodes.push(node)
-    
-    // Collect messages from this node
     const nodeData = node.data as ChatNodeData
     if (nodeData.messages && nodeData.messages.length > 0) {
-      const nodeMessages = nodeData.messages.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }))
-      messages.push(...nodeMessages)
+      nodeData.messages.forEach(msg => {
+        // Create unique key based on role, content, and position in conversation
+        const key = `${msg.role}:${msg.content}:${msg.createdAt}`
+        
+        if (!messagesMap.has(key)) {
+          messagesMap.set(key, {
+            role: msg.role,
+            content: msg.content,
+            timestamp: msg.createdAt,
+            nodeId: nodeId
+          })
+        }
+      })
     }
-    
-    // Recursively traverse incoming edges (sources that connect to this target)
-    const incomingEdges = edges.filter(edge => edge.target === nodeId)
-    for (const edge of incomingEdges) {
-      traverse(edge.source)
-    }
-  }
+  })
   
-  // Start traversal from target node
-  traverse(targetNodeId)
+  // Convert to array and sort by timestamp to maintain conversation order
+  const messages = Array.from(messagesMap.values())
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .map(({ role, content }) => ({ role, content }))
   
-  // Reverse to get topological order (sources first)
-  executionOrder.reverse()
-  upstreamNodes.reverse()
-  
-  // Deduplicate messages while preserving order
-  const uniqueMessages = messages.filter((msg, index, arr) => 
-    index === arr.findIndex(m => 
-      m.role === msg.role && m.content === msg.content
-    )
-  )
+  // Check if context is complete (no missing nodes in the chain)
+  const isComplete = executionOrder.length === upstreamNodeIds.size && !hasErrors
   
   return {
     nodeId: targetNodeId,
     upstreamNodes,
-    messages: uniqueMessages,
-    executionOrder
+    messages,
+    executionOrder,
+    hasErrors,
+    errorNodes,
+    isComplete
   }
 }
 
@@ -72,7 +168,7 @@ export function validateNoCycle(nodes: string[], edges: Edge[]): boolean {
   const graph = new Map<string, string[]>()
   const visited = new Set<string>()
   const recStack = new Set<string>()
-  
+
   // Build adjacency list
   edges.forEach(edge => {
     if (!graph.has(edge.source)) {
@@ -80,28 +176,28 @@ export function validateNoCycle(nodes: string[], edges: Edge[]): boolean {
     }
     graph.get(edge.source)!.push(edge.target)
   })
-  
+
   function hasCycle(nodeId: string): boolean {
     if (recStack.has(nodeId)) return true
     if (visited.has(nodeId)) return false
-    
+
     visited.add(nodeId)
     recStack.add(nodeId)
-    
+
     const neighbors = graph.get(nodeId) || []
     for (const neighbor of neighbors) {
       if (hasCycle(neighbor)) return true
     }
-    
+
     recStack.delete(nodeId)
     return false
   }
-  
+
   for (const nodeId of nodes) {
     if (!visited.has(nodeId)) {
       if (hasCycle(nodeId)) return false
     }
   }
-  
+
   return true
 }

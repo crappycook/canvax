@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   ReactFlow,
   MiniMap,
@@ -26,10 +26,11 @@ const DEFAULT_NODES: Node<ChatNodeData>[] = [
     data: {
       label: 'Chat Node',
       description: 'Draft prompts and iterate quickly',
-      model: 'gpt-4',
+      model: 'gpt-4o',
       prompt: '',
       messages: [],
       status: 'idle',
+      createdAt: Date.now(),
     },
   },
 ]
@@ -58,28 +59,29 @@ export default function ReactFlowCanvas({ projectId: _projectId }: ReactFlowCanv
     }
   }, [nodes.length, edges.length, setNodes, setEdges])
 
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const toastMessage = useStore(state => state.ui.toastMessage)
+  const showToast = useStore(state => state.showToast)
+  const hideToast = useStore(state => state.hideToast)
   const toastTimerRef = useRef<number | null>(null)
 
-  const showToast = useCallback((message: string) => {
-    if (toastTimerRef.current) {
-      window.clearTimeout(toastTimerRef.current)
+  useEffect(() => {
+    if (toastMessage) {
+      if (toastTimerRef.current) {
+        window.clearTimeout(toastTimerRef.current)
+      }
+
+      toastTimerRef.current = window.setTimeout(() => {
+        hideToast()
+        toastTimerRef.current = null
+      }, 3000)
     }
 
-    setToastMessage(message)
-    toastTimerRef.current = window.setTimeout(() => {
-      setToastMessage(null)
-      toastTimerRef.current = null
-    }, 3000)
-  }, [])
-
-  useEffect(() => {
     return () => {
       if (toastTimerRef.current) {
         window.clearTimeout(toastTimerRef.current)
       }
     }
-  }, [])
+  }, [toastMessage, hideToast])
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -159,8 +161,10 @@ export default function ReactFlowCanvas({ projectId: _projectId }: ReactFlowCanv
         <Background />
       </ReactFlow>
       {toastMessage && (
-        <div className="pointer-events-none absolute right-4 top-4 rounded-md bg-slate-900/90 px-4 py-2 text-sm text-white shadow-lg">
-          {toastMessage}
+        <div className="pointer-events-none absolute left-1/2 top-8 -translate-x-1/2 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="rounded-lg bg-slate-900/95 px-6 py-3 text-sm font-medium text-white shadow-2xl backdrop-blur-sm">
+            {toastMessage}
+          </div>
         </div>
       )}
     </div>

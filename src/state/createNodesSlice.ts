@@ -43,9 +43,19 @@ export const createNodesSlice: StateCreator<NodesSlice> = (set, get) => ({
   },
 
   addNode: (node) => {
-    set((state) => ({
-      nodes: [...state.nodes, node]
-    }))
+    set((state) => {
+      // Ensure createdAt is set if not provided
+      const nodeWithTimestamp = {
+        ...node,
+        data: {
+          ...(typeof node.data === 'object' && node.data !== null ? node.data : {}),
+          createdAt: (node.data as ChatNodeData)?.createdAt ?? Date.now(),
+        },
+      }
+      return {
+        nodes: [...state.nodes, nodeWithTimestamp]
+      }
+    })
   },
 
   updateNode: (nodeId, updates) => {
@@ -170,13 +180,16 @@ function updateData(
 
   const draft: MutableChatNodeData = {
     label: typeof incoming.label === 'string' ? incoming.label : 'Untitled',
-    model: typeof incoming.model === 'string' ? incoming.model : 'gpt-4',
+    model: typeof incoming.model === 'string' ? incoming.model : 'gpt-4o',
     prompt: typeof incoming.prompt === 'string' ? incoming.prompt : '',
     messages: Array.isArray(incoming.messages)
       ? (incoming.messages as ChatMessage[])
       : [],
     status: incoming.status ?? 'idle',
     error: incoming.error,
+    createdAt: typeof incoming.createdAt === 'number' ? incoming.createdAt : Date.now(),
+    nodeType: incoming.nodeType,
+    sourceNodeId: incoming.sourceNodeId,
     ...incoming,
   }
 

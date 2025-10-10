@@ -54,15 +54,19 @@ export interface CustomHeaderProps {
   description?: string;
   editable?: boolean;
   onTitleChange?: (newTitle: string) => void;
+  icon?: React.ReactNode;
 }
 
 export const CustomHeader = forwardRef<
   HTMLDivElement,
   CustomHeaderProps
->(({ title, description }) => {
+>(({ title, description, icon }) => {
   return (
     <div className="p-4 border-b">
-      <h3 className="font-semibold text-sm">{title}</h3>
+      <div className="flex items-center gap-2">
+        {icon && <div className="text-muted-foreground">{icon}</div>}
+        <h3 className="font-semibold text-sm">{title}</h3>
+      </div>
       {description && (
         <p className="text-xs text-muted-foreground mt-1">{description}</p>
       )}

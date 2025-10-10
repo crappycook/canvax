@@ -1,0 +1,52 @@
+/* Node type styles */
+.node-input {
+  border-color: hsl(var(--primary));
+}
+
+.node-input:hover {
+  box-shadow: 0 0 0 4px hsl(var(--primary) / 0.1);
+}
+
+.node-response {
+  border-color: hsl(var(--muted-foreground));
+  background: hsl(var(--muted) / 0.3);
+}
+
+.node-hybrid {
+  border-color: hsl(var(--primary));
+}
+
+/* Node status styles */
+
+/* Idle state - gray border */
+.node-idle {
+  border-color: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Running state - blue pulsing border */
+.node-running {
+  border-color: hsl(220 90% 56%);
+  animation: pulse-border 2s ease-in-out infinite;
+}
+
+@keyframes pulse-border {
+  0%, 100% {
+    border-color: hsl(220 90% 56%);
+    box-shadow: 0 0 0 0 hsl(220 90% 56% / 0.4);
+  }
+  50% {
+    border-color: hsl(220 90% 76%);
+    box-shadow: 0 0 0 4px hsl(220 90% 56% / 0.1);
+  }
+}
+
+/* Success state - green border */
+.node-success {
+  border-color: hsl(142 76% 36%);
+}
+
+/* Error state - red border and background */
+.node-error {
+  border-color: hsl(0 84% 60%);
+  background: hsl(0 84% 97%);
+}

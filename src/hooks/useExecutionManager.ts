@@ -27,6 +27,52 @@ export interface ExecutionManager {
 
 type ErrorWithStatus = Error & { status?: number }
 
+/**
+ * Helper function to create a response node for a given input node
+ * @param sourceNodeId - The ID of the input node that triggered execution
+ * @param sourceNode - The input node object
+ * @returns The ID of the newly created response node
+ */
+function createResponseNode(
+  sourceNodeId: string,
+  sourceNode: Node<ChatNodeData>
+): string {
+  const state = useStore.getState()
+
+  const responseNodeId = `node-${Date.now()}`
+  const responseNode: Node<ChatNodeData> = {
+    id: responseNodeId,
+    type: 'chat',
+    position: {
+      x: sourceNode.position.x,
+      y: sourceNode.position.y + 350
+    },
+    data: {
+      label: `Response from ${sourceNode.data.label}`,
+      model: sourceNode.data.model,
+      prompt: '',
+      messages: [],
+      status: 'idle',
+      createdAt: Date.now(),
+      sourceNodeId: sourceNodeId,
+    }
+  }
+
+  // Add the response node
+  state.addNode(responseNode)
+
+  // Create edge connecting source to response
+  const edge: Edge = {
+    id: `edge-${Date.now()}`,
+    source: sourceNodeId,
+    target: responseNodeId,
+    type: 'default'
+  }
+  state.addEdge(edge)
+
+  return responseNodeId
+}
+
 export function useExecutionManager(llmClient: LLMClient): ExecutionManager {
   const isRunning = useStore(state => state.isRunning)
   const executionQueue = useStore(state => state.executionQueue)
@@ -45,32 +91,85 @@ export function useExecutionManager(llmClient: LLMClient): ExecutionManager {
     const prompt = typeof nodeData.prompt === 'string' ? nodeData.prompt.trim() : ''
     if (!prompt) return
 
+    // 1. Collect upstream context with integrity checking
+    const context = collectUpstreamContext(nodeId, nodes, edges)
+
+    // 2. Check for context integrity issues
+    if (context.hasErrors) {
+      const errorNodeLabels = context.errorNodes
+        .map(id => nodes.find(n => n.id === id)?.data.label || id)
+        .join(', ')
+      
+      console.warn(
+        `⚠️ Context integrity warning: Upstream nodes have errors: ${errorNodeLabels}. ` +
+        `The context may be incomplete.`
+      )
+      
+      // Set a warning on the node (non-blocking)
+      state.updateNode(nodeId, { 
+        error: `Warning: Upstream context incomplete (errors in: ${errorNodeLabels})` 
+      })
+    }
+
+    if (!context.isComplete && context.upstreamNodes.length > 0) {
+      console.warn(
+        `⚠️ Context may be incomplete for node ${nodeId}. ` +
+        `Some upstream nodes may not be properly connected.`
+      )
+    }
+
+    // 3. Check if input node already has downstream connections
+    const downstreamEdges = edges.filter(e => e.source === nodeId)
+    let responseNodeId: string | null = null
+
+    if (downstreamEdges.length > 0) {
+      // Use existing response node (most recently created)
+      const sortedDownstream = downstreamEdges
+        .map(e => nodes.find(n => n.id === e.target))
+        .filter((n): n is Node<ChatNodeData> => n !== undefined)
+        .sort((a, b) => (b.data.createdAt ?? 0) - (a.data.createdAt ?? 0))
+
+      responseNodeId = sortedDownstream[0]?.id ?? null
+    }
+
+    // 4. If no downstream node exists, create a new response node
+    if (!responseNodeId) {
+      responseNodeId = createResponseNode(nodeId, node)
+    }
+
     state.startExecution(nodeId)
     state.setNodeStatus(nodeId, 'running')
     state.updateNode(nodeId, { error: undefined })
 
-    const context = collectUpstreamContext(nodeId, nodes, edges)
+    // 5. Set response node to running state
+    state.setNodeStatus(responseNodeId, 'running')
+    state.updateNode(responseNodeId, { error: undefined })
 
     const userMessage: ChatMessage = {
       id: `msg-${Date.now()}-user`,
       role: 'user',
       content: prompt,
-      timestamp: Date.now(),
+      createdAt: Date.now(),
     }
 
+    // Add user message to input node for context preservation
     state.addMessageToNode(nodeId, userMessage)
 
     const abortController = new AbortController()
     abortControllersRef.current.set(nodeId, abortController)
 
     try {
+      // 6. Build complete message array: upstream context + current prompt
+      // Context messages are already deduplicated and in topological order
+      const completeMessages = [
+        ...context.messages,
+        { role: 'user' as const, content: prompt },
+      ]
+
       const response = await llmClient.generate(
         {
           model: nodeData.model || state.settings.defaultModel,
-          messages: [
-            ...context.messages,
-            { role: 'user' as const, content: prompt },
-          ],
+          messages: completeMessages,
           temperature: nodeData.temperature ?? state.settings.temperature,
           maxTokens: nodeData.maxTokens ?? state.settings.maxTokens,
         },
@@ -81,22 +180,40 @@ export function useExecutionManager(llmClient: LLMClient): ExecutionManager {
         id: `msg-${Date.now()}-assistant`,
         role: 'assistant',
         content: response.content,
-        timestamp: Date.now(),
+        createdAt: Date.now(),
+        metadata: {
+          model: nodeData.model || state.settings.defaultModel,
+        }
       }
 
-      state.addMessageToNode(nodeId, assistantMessage)
-      state.setNodeStatus(nodeId, 'success')
-      state.updateNode(nodeId, { prompt: '' })
-      state.setExecutionResult(nodeId, { success: true, output: response.content })
-    } catch (error) {
-      const typedError = error as ErrorWithStatus
+      // 7. Write LLM response to response node (not input node)
+      state.addMessageToNode(responseNodeId, assistantMessage)
+      state.setNodeStatus(responseNodeId, 'success')
+      state.setExecutionResult(responseNodeId, { success: true, output: response.content })
 
-      if (typedError instanceof DOMException && typedError.name === 'AbortError') {
+      // 8. Keep the prompt in input node (don't clear it)
+      // User can manually clear or edit it for next execution
+      state.setNodeStatus(nodeId, 'success')
+      state.setExecutionResult(nodeId, { success: true, output: response.content })
+
+      // 9. Auto-hide success status after 2 seconds
+      setTimeout(() => {
+        const currentState = useStore.getState()
+        const currentNode = currentState.nodes.find(n => n.id === nodeId)
+        if (currentNode?.data.status === 'success') {
+          currentState.setNodeStatus(nodeId, 'idle')
+        }
+      }, 2000)
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
         state.setNodeStatus(nodeId, 'idle')
+        state.setNodeStatus(responseNodeId, 'idle')
         state.setExecutionResult(nodeId, { success: false, error: 'Request cancelled' })
+        state.setExecutionResult(responseNodeId, { success: false, error: 'Request cancelled' })
         return
       }
 
+      const typedError = error as ErrorWithStatus
       const status = typedError.status
       let errorMessage = 'Unexpected error. Please retry.'
 
@@ -110,8 +227,12 @@ export function useExecutionManager(llmClient: LLMClient): ExecutionManager {
         errorMessage = typedError.message
       }
 
+      // Set error on response node (not input node)
+      state.setNodeStatus(responseNodeId, 'error')
+      state.updateNode(responseNodeId, { error: errorMessage })
+      state.setExecutionResult(responseNodeId, { success: false, error: errorMessage })
+
       state.setNodeStatus(nodeId, 'error')
-      state.updateNode(nodeId, { error: errorMessage })
       state.setExecutionResult(nodeId, { success: false, error: errorMessage })
 
       throw typedError

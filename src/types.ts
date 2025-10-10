@@ -7,7 +7,30 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
-  timestamp: number;
+  createdAt: number;
+  metadata?: {
+    model?: string;
+    tokens?: number;
+  };
+}
+
+export type NodeType = 'input' | 'response' | 'hybrid';
+
+export type NodeErrorType =
+  | 'api_key_missing'
+  | 'api_key_invalid'
+  | 'rate_limit'
+  | 'network_error'
+  | 'model_not_found'
+  | 'context_incomplete'
+  | 'unknown';
+
+export interface NodeError {
+  type: NodeErrorType;
+  message: string;
+  retryable: boolean;
+  actionLabel?: string;
+  actionHandler?: () => void;
 }
 
 export interface ChatNodeData extends BaseNodeData, Record<string, unknown> {
@@ -18,6 +41,9 @@ export interface ChatNodeData extends BaseNodeData, Record<string, unknown> {
   error?: string;
   temperature?: number;
   maxTokens?: number;
+  createdAt: number;
+  nodeType?: NodeType;
+  sourceNodeId?: string;
 }
 
 export interface ProjectSnapshot {

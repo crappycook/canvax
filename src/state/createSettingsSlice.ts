@@ -19,7 +19,7 @@ export interface SettingsSlice {
 
 export const createSettingsSlice: StateCreator<SettingsSlice> = (set) => ({
   settings: {
-    defaultModel: 'gpt-4',
+    defaultModel: 'gpt-4o',
     language: 'en',
     autoSave: true,
     theme: 'system',
@@ -56,7 +56,7 @@ export const createSettingsSlice: StateCreator<SettingsSlice> = (set) => ({
   resetSettings: () => {
     set({
       settings: {
-        defaultModel: 'gpt-4',
+        defaultModel: 'gpt-4o',
         language: 'en',
         autoSave: true,
         theme: 'system',

@@ -7,6 +7,7 @@ interface PromptEditorProps {
   placeholder?: string
   disabled?: boolean
   autoFocus?: boolean
+  onEnter?: () => void
 }
 
 export const PromptEditor = forwardRef<HTMLTextAreaElement, PromptEditorProps>(
@@ -16,6 +17,7 @@ export const PromptEditor = forwardRef<HTMLTextAreaElement, PromptEditorProps>(
     placeholder = 'Enter your prompt...',
     disabled = false,
     autoFocus = false,
+    onEnter,
   }, ref) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -33,11 +35,21 @@ export const PromptEditor = forwardRef<HTMLTextAreaElement, PromptEditorProps>(
       onChange(event.target.value)
     }
 
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // Enter without Shift triggers execution
+      if (event.key === 'Enter' && !event.shiftKey && onEnter) {
+        event.preventDefault()
+        onEnter()
+      }
+      // Shift+Enter allows newline (default behavior)
+    }
+
     return (
       <Textarea
         ref={textareaRef}
         value={value}
         onChange={handleChange}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
         autoFocus={autoFocus}

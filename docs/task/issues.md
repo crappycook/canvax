@@ -20,16 +20,16 @@
       ✅ 验证：交互均可通过键盘操作，空状态展示引导。
 
 ## Phase 3 · Canvas Runtime Loop
-- [ ] React Flow Canvas 基础集成\
+- [x] React Flow Canvas 基础集成\
       搭建 `ReactFlowCanvas` 组件，注册 `nodeTypes/edgeTypes`，实现 `handleNodesChange/EdgesChange/Connect` 与 `validateNoCycle`。\
       ✅ 验证：新增节点、连线、撤销、重做；检测自环时弹出 toast。
-- [ ] ChatNode UI 与动作\
+- [x] ChatNode UI 与动作\
       构建节点标题区、模型选择、Prompt 编辑器、消息区、运行/停止/复制/删除按钮，处理焦点与快捷键。\
       ✅ 验证：节点缩放时布局不破坏；键盘可聚焦控制条。
-- [ ] 上下文收集 + LLM 调度链路\
+- [x] 上下文收集 + LLM 调度链路\
       将 `useRunNode` 与 `useExecutionManager` 接入：运行节点前调用 `collectUpstreamContext`，生成 LLM 请求（含 Abort 支持），写回 `messages/status/error`。\
       ✅ 验证：并行运行两个节点不会互相阻塞；Stop 能即时终止请求并恢复 `idle`。
-- [ ] 错误态与重试\
+- [x] 错误态与重试\
       统一处理 401/429/网络错误，节点内展示错误条并支持一键 Retry。\
       ✅ 验证：mock 失败响应时，错误信息可读、retry 后恢复正常。
 

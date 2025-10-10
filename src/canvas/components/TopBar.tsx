@@ -26,6 +26,8 @@ export default function TopBar({ projectId }: TopBarProps) {
     setDialogOpen(true)
   }, [projectTitle])
 
+  const showToast = useStore(state => state.showToast)
+
   const handleSave = useCallback(() => {
     if (isSaving) return
 
@@ -36,16 +38,17 @@ export default function TopBar({ projectId }: TopBarProps) {
 
     setIsSaving(true)
     saveProject()
+      .then(() => {
+        showToast('All changes saved')
+      })
       .catch(error => {
         console.error('Failed to save project:', error)
-        if (typeof window !== 'undefined') {
-          window.alert('保存项目失败，请稍后重试。')
-        }
+        showToast('Failed to save project')
       })
       .finally(() => {
         setIsSaving(false)
       })
-  }, [isSaving, isUntitledProject, openRenameDialog, saveProject])
+  }, [isSaving, isUntitledProject, openRenameDialog, saveProject, showToast])
 
   const handleDialogClose = useCallback(() => {
     if (isSaving) return
@@ -69,15 +72,14 @@ export default function TopBar({ projectId }: TopBarProps) {
     try {
       await saveProject(titleInput)
       setDialogOpen(false)
+      showToast('All changes saved')
     } catch (error) {
       console.error('Failed to save project:', error)
-      if (typeof window !== 'undefined') {
-        window.alert('保存项目失败，请稍后重试。')
-      }
+      showToast('Failed to save project')
     } finally {
       setIsSaving(false)
     }
-  }, [isConfirmDisabled, saveProject, titleInput])
+  }, [isConfirmDisabled, saveProject, titleInput, showToast])
 
   const handleGoHome = useCallback(async () => {
     if (isLeaving) return
@@ -88,14 +90,12 @@ export default function TopBar({ projectId }: TopBarProps) {
       navigate('/')
     } catch (error) {
       console.error(error)
-      if (typeof window !== 'undefined') {
-        window.alert('保存项目失败，请先解决保存问题后再返回主页。')
-      }
+      showToast('Failed to save project')
     } finally {
       setIsSaving(false)
       setIsLeaving(false)
     }
-  }, [isLeaving, saveProject, navigate])
+  }, [isLeaving, saveProject, navigate, showToast])
 
   return (
     <header className="border-b bg-background px-4 py-3 flex items-center justify-between">

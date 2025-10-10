@@ -30,7 +30,7 @@ export const createTemplatesSlice: StateCreator<TemplatesSlice> = (set, get) => 
         position: { x: 0, y: 0 },
         data: {
           title: 'Chat',
-          modelId: 'gpt-4',
+          modelId: 'gpt-4o',
           prompt: 'Hello! How can I help you today?',
           messages: [],
           status: 'idle'
@@ -48,7 +48,7 @@ export const createTemplatesSlice: StateCreator<TemplatesSlice> = (set, get) => 
         position: { x: 0, y: 0 },
         data: {
           title: 'Summarize',
-          modelId: 'gpt-4',
+          modelId: 'gpt-4o',
           prompt: 'Please summarize the following content:',
           messages: [],
           status: 'idle'

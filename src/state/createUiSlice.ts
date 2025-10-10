@@ -8,6 +8,7 @@ export interface UiSlice {
     zoomLevel: number
     gridVisible: boolean
     minimapVisible: boolean
+    toastMessage: string | null
   }
   
   toggleSidebar: () => void
@@ -16,6 +17,8 @@ export interface UiSlice {
   setZoomLevel: (zoom: number) => void
   toggleGrid: () => void
   toggleMinimap: () => void
+  showToast: (message: string) => void
+  hideToast: () => void
 }
 
 export const createUiSlice: StateCreator<UiSlice> = (set) => ({
@@ -25,7 +28,8 @@ export const createUiSlice: StateCreator<UiSlice> = (set) => ({
     nodePanelOpen: false,
     zoomLevel: 1,
     gridVisible: true,
-    minimapVisible: true
+    minimapVisible: true,
+    toastMessage: null
   },
 
   toggleSidebar: () => {
@@ -61,6 +65,18 @@ export const createUiSlice: StateCreator<UiSlice> = (set) => ({
   toggleMinimap: () => {
     set((state) => ({
       ui: { ...state.ui, minimapVisible: !state.ui.minimapVisible }
+    }))
+  },
+
+  showToast: (message: string) => {
+    set((state) => ({
+      ui: { ...state.ui, toastMessage: message }
+    }))
+  },
+
+  hideToast: () => {
+    set((state) => ({
+      ui: { ...state.ui, toastMessage: null }
     }))
   }
 })
