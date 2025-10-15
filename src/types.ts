@@ -3,6 +3,10 @@ export interface BaseNodeData {
   description?: string;
 }
 
+export interface CustomEdgeData {
+  createdAt: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';

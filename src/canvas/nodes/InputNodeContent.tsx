@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { AlertCircle, Play, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ModelSelector } from '@/components/ModelSelector'
@@ -6,6 +6,7 @@ import { PromptEditor } from '@/components/PromptEditor'
 import { NodeStatusBadge } from './NodeStatusBadge'
 import { useRunNode } from '@/hooks/useRunNode'
 import { useStore } from '@/state/store'
+import { useDebounce } from '@/hooks/useDebounce'
 import type { ChatNodeData } from '@/types'
 
 interface InputNodeContentProps {
@@ -19,6 +20,9 @@ export const InputNodeContent = memo(function InputNodeContent({
 }: InputNodeContentProps) {
   const promptEditorRef = useRef<HTMLTextAreaElement>(null)
   const updateNode = useStore(state => state.updateNode)
+  
+  // Local state for immediate UI updates
+  const [localPrompt, setLocalPrompt] = useState(data.prompt || '')
 
   const { run, stop, isRunning, canRun, requiresApiKey, provider } = useRunNode(nodeId)
 
@@ -29,11 +33,25 @@ export const InputNodeContent = memo(function InputNodeContent({
     [nodeId, updateNode]
   )
 
+  // Debounced update to store (300ms delay)
+  const debouncedUpdatePrompt = useDebounce(
+    useCallback(
+      (newPrompt: string) => {
+        updateNode(nodeId, { prompt: newPrompt })
+      },
+      [nodeId, updateNode]
+    ),
+    300
+  )
+
   const handlePromptChange = useCallback(
     (newPrompt: string) => {
-      updateNode(nodeId, { prompt: newPrompt })
+      // Update local state immediately for responsive UI
+      setLocalPrompt(newPrompt)
+      // Debounce the store update
+      debouncedUpdatePrompt(newPrompt)
     },
-    [nodeId, updateNode]
+    [debouncedUpdatePrompt]
   )
 
   const handleRun = useCallback(async () => {
@@ -44,6 +62,21 @@ export const InputNodeContent = memo(function InputNodeContent({
   const handleStop = useCallback(() => {
     stop()
   }, [stop])
+
+  // Handle Escape key to cancel execution
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isRunning) {
+        event.preventDefault()
+        stop()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isRunning, stop])
 
   return (
     <div className="space-y-4 p-4">
@@ -67,7 +100,7 @@ export const InputNodeContent = memo(function InputNodeContent({
         <label className="mb-2 block text-sm font-medium">Prompt</label>
         <PromptEditor
           ref={promptEditorRef}
-          value={data.prompt || ''}
+          value={localPrompt}
           onChange={handlePromptChange}
           placeholder="Enter your message..."
           disabled={isRunning}
@@ -91,6 +124,8 @@ export const InputNodeContent = memo(function InputNodeContent({
         onClick={isRunning ? handleStop : handleRun}
         disabled={(!isRunning && !canRun) || data.status === 'running'}
         className="w-full"
+        aria-label={isRunning ? 'Stop execution' : 'Execute node'}
+        aria-describedby="execution-status"
       >
         {isRunning ? (
           <>
@@ -104,6 +139,11 @@ export const InputNodeContent = memo(function InputNodeContent({
           </>
         )}
       </Button>
+      
+      {/* Screen reader status announcement */}
+      <div id="execution-status" className="sr-only" aria-live="assertive">
+        {isRunning ? 'Node is running' : 'Node is idle'}
+      </div>
     </div>
   )
 })

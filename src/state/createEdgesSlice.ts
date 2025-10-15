@@ -40,15 +40,47 @@ export const createEdgesSlice: StateCreator<EdgesSlice> = (set, get) => ({
   },
 
   connectEdge: (connection) => {
-    set(state => ({
-      edges: reactFlowAddEdge(connection, state.edges),
-    }))
+    set(state => {
+      // Create edge with timestamp
+      const newEdge = reactFlowAddEdge(connection, state.edges)
+      
+      // Add timestamp to the newly created edge
+      const edgesWithTimestamp = newEdge.map(edge => {
+        // Only add timestamp to the new edge (the last one)
+        if (edge === newEdge[newEdge.length - 1]) {
+          return {
+            ...edge,
+            data: {
+              ...edge.data,
+              createdAt: Date.now()
+            }
+          }
+        }
+        return edge
+      })
+      
+      return {
+        edges: edgesWithTimestamp
+      }
+    })
   },
 
   addEdge: (edge) => {
-    set((state) => ({
-      edges: [...state.edges, edge]
-    }))
+    set((state) => {
+      // Auto-generate ID if not provided
+      const edgeWithId = {
+        ...edge,
+        id: edge.id || `edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        data: {
+          ...edge.data,
+          createdAt: edge.data?.createdAt || Date.now()
+        }
+      }
+      
+      return {
+        edges: [...state.edges, edgeWithId]
+      }
+    })
   },
 
   removeEdge: (edgeId) => {

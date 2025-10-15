@@ -23,7 +23,7 @@ export class LLMClient {
   private modelToProvider: Map<string, LLMProvider> = new Map()
   private apiKeys: Map<string, string> = new Map()
 
-  constructor(initialProviders: LLMProvider[] = llmProviders) {
+  constructor(initialProviders: readonly LLMProvider[] = llmProviders) {
     initialProviders.forEach(provider => {
       this.registerProvider(provider)
     })
@@ -125,7 +125,7 @@ export class LLMClient {
   async streamGenerate(request: LLMRequest, onChunk: (chunk: string) => void, options: LLMRequestOptions = {}): Promise<void> {
     // Mock implementation for MVP
     const response = await this.generate(request, options)
-    
+
     // Simulate streaming by breaking response into chunks
     const words = response.content.split(' ')
     for (const word of words) {
@@ -133,7 +133,7 @@ export class LLMClient {
       onChunk(word + ' ')
     }
   }
-  
+
   // Utility methods
   async validateApiKey(providerId: string): Promise<boolean> {
     // Mock implementation for MVP

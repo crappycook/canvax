@@ -21,7 +21,7 @@ export const PromptEditor = forwardRef<HTMLTextAreaElement, PromptEditorProps>(
   }, ref) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-    useImperativeHandle(ref, () => textareaRef.current, [])
+    useImperativeHandle(ref, () => textareaRef.current!, [])
 
     useEffect(() => {
       const textarea = textareaRef.current

@@ -5,6 +5,7 @@ import {
   applyNodeChanges,
 } from '@xyflow/react'
 import { type ChatNodeData, type ChatMessage } from '@/types'
+import { type EdgesSlice } from './createEdgesSlice'
 
 export interface NodesSlice {
   nodes: Node[]
@@ -22,13 +23,18 @@ export interface NodesSlice {
   setNodeStatus: (nodeId: string, status: 'idle' | 'running' | 'error' | 'success') => void
   addMessageToNode: (nodeId: string, message: ChatMessage) => void
   clearNodeMessages: (nodeId: string) => void
+  convertNodeToInput: (nodeId: string) => void
+
+  // Node relationships
+  getDownstreamNodes: (nodeId: string) => Node[]
+  getUpstreamNodes: (nodeId: string) => Node[]
 
   // Selection
   selectNode: (nodeId: string | null) => void
   getSelectedNode: () => Node | null
 }
 
-export const createNodesSlice: StateCreator<NodesSlice> = (set, get) => ({
+export const createNodesSlice: StateCreator<NodesSlice & EdgesSlice, [], [], NodesSlice> = (set, get) => ({
   nodes: [],
   selectedNodeId: null,
 
@@ -156,6 +162,49 @@ export const createNodesSlice: StateCreator<NodesSlice> = (set, get) => ({
           : node
       )
     }))
+  },
+
+  convertNodeToInput: (nodeId) => {
+    set((state) => ({
+      nodes: state.nodes.map((node) =>
+        node.id === nodeId
+          ? {
+            ...node,
+            data: updateData(node.data, draft => {
+              // Add empty prompt to convert response node to input node
+              draft.prompt = ''
+              // Keep existing messages as context
+              // Update nodeType to hybrid if it has messages
+              if (draft.messages.length > 0) {
+                draft.nodeType = 'hybrid'
+              } else {
+                draft.nodeType = 'input'
+              }
+            }),
+          }
+          : node
+      )
+    }))
+  },
+
+  getDownstreamNodes: (nodeId) => {
+    const state = get()
+    // Get all edges where this node is the source
+    const downstreamEdges = state.edges.filter((edge) => edge.source === nodeId)
+    // Get the target nodes
+    const downstreamNodeIds = downstreamEdges.map((edge) => edge.target)
+    // Return the actual node objects
+    return state.nodes.filter((node) => downstreamNodeIds.includes(node.id))
+  },
+
+  getUpstreamNodes: (nodeId) => {
+    const state = get()
+    // Get all edges where this node is the target
+    const upstreamEdges = state.edges.filter((edge) => edge.target === nodeId)
+    // Get the source nodes
+    const upstreamNodeIds = upstreamEdges.map((edge) => edge.source)
+    // Return the actual node objects
+    return state.nodes.filter((node) => upstreamNodeIds.includes(node.id))
   },
 
   selectNode: (nodeId) => {

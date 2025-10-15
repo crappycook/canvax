@@ -19,59 +19,93 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture Overview
 
-This is a React + TypeScript + Vite application implementing a Flowith-style canvas-based AI interaction tool. The application uses React Flow (@xyflow/react) for canvas/flow functionality.
+This is a React + TypeScript + Vite application implementing a Flowith-style canvas-based AI interaction tool. The application uses React Flow (@xyflow/react) for canvas/flow functionality with advanced AI workflow orchestration.
 
 ### Key Technologies
 - **Frontend**: React 19 + TypeScript + Vite
 - **UI Framework**: Tailwind CSS 4 + shadcn/ui components
 - **Flow/Canvas**: @xyflow/react (React Flow)
+- **State Management**: Zustand with persistence and devtools
+- **Routing**: React Router DOM
+- **LLM Integration**: Custom LLM client with OpenAI API support
 - **Styling**: Tailwind CSS with `cn()` utility for class composition
 - **Icons**: Lucide React
 
 ### Project Structure
 - `src/` - Main source code
-  - `components/` - React components
-    - `ui/` - Base UI components (Button, etc.)
+  - `app/` - Application-level components and routing
+    - `router.tsx` - React Router configuration
+    - `AppShell.tsx` - Main application layout
+    - `pages/` - Page components (CanvasPage, ProjectHubPage, SettingsModal)
+  - `state/` - Zustand store slices (project, canvas, nodes, edges, runtime, settings, UI, templates)
+  - `canvas/` - Canvas-specific components
+    - `ReactFlowCanvas.tsx` - Main canvas with React Flow
+    - `components/` - Canvas-specific components (TopBar)
+    - `nodes/` - Node type implementations (ChatNode, InputNodeContent, ResponseNodeContent, ErrorDisplay)
+  - `components/` - Reusable UI components
+    - `ui/` - Base UI components (Button, TextArea, DropdownMenu)
     - `custom-nodes.tsx` - Custom node implementations
-    - `Canvax.tsx` - Main canvas component
-    - `demo.tsx` - Demo node content
-    - `node-types.ts` - Node type definitions
     - `base-node.tsx` - Base node component structure
-  - `lib/utils.ts` - Utility functions (cn for class merging)
-  - `App.tsx` - Root application component
-  - `main.tsx` - Application entry point
+    - ModelSelector, PromptEditor, MessageHistory, MarkdownRenderer
+  - `services/` - External service integrations
+    - `llmClient.ts` - OpenAI API client with error handling
+  - `hooks/` - Custom React hooks
+    - `useExecutionManager.ts` - AI workflow execution orchestration
+    - `useDebounce.ts` - Performance optimization
+  - `algorithms/` - Business logic
+    - `collectUpstreamContext.ts` - Context collection for AI workflows
+  - `types.ts` - TypeScript type definitions
+  - `types/errors.ts` - Error handling utilities
 
-### Core Concepts
-- **Nodes**: Custom nodes built with BaseNode components
-- **Edges**: Connections between nodes for flow
-- **Canvas**: Infinite canvas for node arrangement
-- **State Management**: Currently uses React Flow's built-in state hooks
+### State Management Architecture
+
+The application uses Zustand with a modular slice pattern:
+- **ProjectSlice**: Project lifecycle and snapshots
+- **CanvasSlice**: Canvas viewport and interactions
+- **NodesSlice**: Node management with CRUD operations and relationships
+- **EdgesSlice**: Edge management and connections
+- **RuntimeSlice**: Execution state and queue management
+- **SettingsSlice**: User preferences and API keys
+- **UiSlice**: UI state and modals
+- **TemplatesSlice**: Node templates and presets
+
+### Core Workflow Patterns
+
+**AI Node Execution Flow**:
+1. Input nodes collect user prompts
+2. Execution manager collects upstream context
+3. LLM client generates responses via OpenAI API
+4. Response nodes display AI outputs
+5. Auto-creation of response nodes for input nodes
+
+**Context Collection**: The `collectUpstreamContext` algorithm builds complete message arrays from connected nodes, ensuring proper conversation flow and context preservation.
 
 ### Component Patterns
 - Uses `forwardRef` for all base components
 - Implements compound component pattern for node structure
 - Follows shadcn/ui conventions for styling and structure
-- Uses `cn()` utility from `lib/utils.ts` for Tailwind class composition
+- Uses `cn()` utility for Tailwind class composition
+- Error boundaries and graceful error handling throughout
 
 ### Development Guidelines
 - Follow Cursor rules in `.cursor/rules/` directory
-- Use TypeScript with strict typing
+- Use TypeScript with strict typing and comprehensive interfaces
 - Implement accessibility features (ARIA labels, keyboard navigation)
 - Follow mobile-first responsive design
 - Use modern Tailwind CSS syntax (e.g., `size-4` instead of `h-4 w-4`)
+- Maintain separation of concerns between state, UI, and services
 
-### Current Implementation Status
-- Basic canvas with React Flow integration using `useNodesState` and `useEdgesState`
-- Custom node components with compound component architecture (BaseNode, BaseNodeHeader, BaseNodeContent, BaseNodeFooter)
-- React Flow handles (connection points) integrated into custom nodes
-- Demo nodes showing full component structure with example content
-- No LLM integration or external data persistence yet
+### Key Implementation Features
+- **Multi-page routing**: Canvas, Project Hub, and Settings
+- **Persistent state**: Project snapshots with localStorage
+- **Real-time execution**: Queue-based AI workflow execution
+- **Error handling**: Comprehensive error types and user-friendly error display
+- **Context-aware AI**: Intelligent context collection from connected nodes
+- **Responsive design**: Mobile-friendly canvas interface
 
-### Planned Features (from PRD)
-- Multi-model AI node connections
-- Local storage for projects
-- API key management
-- Markdown rendering
-- Export/import functionality
-- Hotkey support
-- Accessibility compliance
+### AI/LLM Integration
+- OpenAI API integration with configurable models
+- Support for temperature and max token settings
+- Streaming response support
+- API key management with secure storage
+- Multi-model support (GPT-4, GPT-3.5, etc.)

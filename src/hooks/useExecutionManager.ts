@@ -3,6 +3,7 @@ import type { Edge, Node } from '@xyflow/react'
 import { useStore } from '@/state/store'
 import { type LLMClient } from '@/services/llmClient'
 import { collectUpstreamContext } from '@/algorithms/collectUpstreamContext'
+import { formatError } from '@/types/errors'
 import type { ChatMessage, ChatNodeData } from '@/types'
 
 export interface ExecutionManager {
@@ -24,8 +25,6 @@ export interface ExecutionManager {
   // Status
   getNodeStatus: (nodeId: string) => 'idle' | 'running' | 'success' | 'error'
 }
-
-type ErrorWithStatus = Error & { status?: number }
 
 /**
  * Helper function to create a response node for a given input node
@@ -119,14 +118,12 @@ export function useExecutionManager(llmClient: LLMClient): ExecutionManager {
     }
 
     // 3. Check if input node already has downstream connections
-    const downstreamEdges = edges.filter(e => e.source === nodeId)
+    const downstreamNodes = state.getDownstreamNodes(nodeId) as Node<ChatNodeData>[]
     let responseNodeId: string | null = null
 
-    if (downstreamEdges.length > 0) {
+    if (downstreamNodes.length > 0) {
       // Use existing response node (most recently created)
-      const sortedDownstream = downstreamEdges
-        .map(e => nodes.find(n => n.id === e.target))
-        .filter((n): n is Node<ChatNodeData> => n !== undefined)
+      const sortedDownstream = downstreamNodes
         .sort((a, b) => (b.data.createdAt ?? 0) - (a.data.createdAt ?? 0))
 
       responseNodeId = sortedDownstream[0]?.id ?? null
@@ -213,19 +210,9 @@ export function useExecutionManager(llmClient: LLMClient): ExecutionManager {
         return
       }
 
-      const typedError = error as ErrorWithStatus
-      const status = typedError.status
-      let errorMessage = 'Unexpected error. Please retry.'
-
-      if (status === 401) {
-        errorMessage = 'Authentication failed. Please update your API key in settings.'
-      } else if (status === 429) {
-        errorMessage = 'Rate limit exceeded. Please wait a moment before retrying.'
-      } else if (typedError.message?.toLowerCase().includes('network')) {
-        errorMessage = 'Network error. Check your connection and try again.'
-      } else if (typedError.message) {
-        errorMessage = typedError.message
-      }
+      // Format error using the error formatting utility
+      const formattedError = formatError(error, 'Execution failed')
+      const errorMessage = formattedError.message
 
       // Set error on response node (not input node)
       state.setNodeStatus(responseNodeId, 'error')
@@ -235,7 +222,7 @@ export function useExecutionManager(llmClient: LLMClient): ExecutionManager {
       state.setNodeStatus(nodeId, 'error')
       state.setExecutionResult(nodeId, { success: false, error: errorMessage })
 
-      throw typedError
+      throw error
     } finally {
       abortControllersRef.current.delete(nodeId)
       state.stopExecution(nodeId)

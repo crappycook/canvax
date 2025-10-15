@@ -102,21 +102,21 @@
   - 在节点头部显示对应图标
   - _Requirements: 5.5, 5.6_
 
-- [ ] 9. 实现错误处理和重试机制
-- [ ] 9.1 创建错误类型系统
+- [x] 9. 实现错误处理和重试机制
+- [x] 9.1 创建错误类型系统
   - 在 `src/types/errors.ts` 定义 `NodeErrorType` 枚举
   - 定义 `NodeError` 接口，包含 type、message、retryable 等字段
   - 实现 `formatError` 函数，将各种错误转换为 `NodeError` 格式
   - _Requirements: 3.7_
 
-- [ ] 9.2 实现错误显示组件
+- [x] 9.2 实现错误显示组件
   - 创建 `ErrorDisplay.tsx` 组件
   - 显示错误图标、错误消息和错误类型
   - 为可重试的错误显示 Retry 按钮
   - 为 API Key 错误提供"Go to Settings"快捷链接
   - _Requirements: 3.7_
 
-- [ ] 9.3 实现重试逻辑
+- [x] 9.3 实现重试逻辑
   - 在响应节点的 Retry 按钮点击时，重新执行上游输入节点
   - 清除响应节点的错误状态
   - 保留原有的用户消息作为上下文
@@ -145,41 +145,41 @@
   - 迁移失败时保留原始数据并提示用户
   - _Requirements: 6.1, 6.4_
 
-- [ ] 11. 更新 NodesSlice 状态管理
+- [x] 11. 更新 NodesSlice 状态管理
   - 在 `createNodesSlice.ts` 中添加 `convertNodeToInput` 方法
   - 添加 `getDownstreamNodes` 方法，获取节点的所有下游节点
   - 添加 `getUpstreamNodes` 方法，获取节点的所有上游节点
   - 更新 `addNode` 方法，自动设置 `createdAt` 时间戳
   - _Requirements: 2.1, 2.2, 3.4, 4.1_
 
-- [ ] 12. 更新 EdgesSlice 状态管理
+- [x] 12. 更新 EdgesSlice 状态管理
   - 在 `createEdgesSlice.ts` 中添加 `addEdge` 方法的自动 ID 生成
   - 确保边创建时包含时间戳
   - 添加 `getEdgesBySource` 和 `getEdgesByTarget` 辅助方法
   - _Requirements: 2.2, 2.3_
 
-- [ ] 13. 性能优化
+- [x] 13. 性能优化
   - 在 `getNodeType` 函数中使用 `useMemo` 缓存计算结果
   - 在 `InputNodeContent` 中对 prompt 更新使用防抖（300ms）
   - 为 `ResponseNodeContent` 的长消息实现虚拟滚动（使用 `@tanstack/react-virtual`）
   - 使用 `React.memo` 包裹所有节点子组件
   - _Requirements: 3.2_
 
-- [ ] 14. 可访问性增强
-- [ ] 14.1 实现键盘导航
+- [x] 14. 可访问性增强
+- [x] 14.1 实现键盘导航
   - 在 PromptEditor 中支持 Enter 键执行（Shift+Enter 换行）
   - 在节点内实现 Tab 键导航
   - 在运行时支持 Escape 键取消执行
   - _Requirements: 1.3_
 
-- [ ] 14.2 添加 ARIA 标签
+- [x] 14.2 添加 ARIA 标签
   - 为响应节点添加 `role="article"` 和 `aria-label`
   - 为执行按钮添加 `aria-label` 和 `aria-describedby`
   - 为加载状态添加 `aria-busy` 属性
   - 为状态变化添加 `aria-live` 区域
   - _Requirements: 3.1, 3.6_
 
-- [ ] 15. 更新现有组件以支持新交互
+- [x] 15. 更新现有组件以支持新交互
   - 更新 `PromptEditor.tsx`，添加 `onEnter` 回调支持
   - 更新 `MessageHistory.tsx`，支持只读模式
   - 更新 `useRunNode.ts` hook，适配新的执行流程
