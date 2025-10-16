@@ -34,23 +34,25 @@
       ✅ 验证：mock 失败响应时，错误信息可读、retry 后恢复正常。
 
 ## Phase 4 · Settings, Persistence & UX Polish
-- [ ] 设置 Modal + WebCrypto\
+- [x] 设置 Modal + WebCrypto\
       实现 API Key 加密存储、默认模型/语言配置，缺省时阻止运行并提示。\
       ✅ 验证：保存后密钥以密文写入存储；清除设置会同步画布状态。
-- [ ] 自动保存与状态指示器\
+- [x] 自动保存与状态指示器\
       在 `TopBar` 添加保存按钮、自动保存（节流）、`SaveIndicator`。\
       ✅ 验证：手动保存触发 toast；有未保存更改时显示 `dirty` 状态。
-- [ ] 快捷键与 A11y 巡检\
+- [x] 快捷键与 A11y 巡检\
       使用 `useHotkeys` 集中监听 N/⌘↵/⌘D/Delete/撤销/重做，补全 aria-label 与焦点样式。\
       ✅ 验证：通过键盘完成创建→连线→运行→保存环节；对比度达到 WCAG AA。
 
 ## Phase 5 · Quality Gates
-- [ ] 编写关键逻辑单元测试\
+- [x] 编写关键逻辑单元测试\
       覆盖 `validateNoCycle`, `collectUpstreamContext`, `RuntimeSlice.runNext`, `ProjectSlice.deriveSnapshot/hydrateProject`。\
-      ✅ 验证：`pnpm test`（Vitest）在 CI & 本地通过。
+      ✅ 验证：`pnpm test`（Vitest）在 CI & 本地通过。\
+      ✅ 完成：87.08% 语句覆盖率，91.52% 分支覆盖率，112 个测试全部通过。
 - [ ] MVP 手动验证清单\
       输出并执行「创建→连线→运行→停止→保存→重开」流程 checklist，记录发现的问题。\
-      ✅ 验证：Checklist 文档存放在 `docs/task/milestone-a-checklist.md`。
+      ✅ 验证：Checklist 文档存放在 `docs/task/milestone-a-checklist.md`。\
+      ⏸️ 待完成：需要手动创建验证清单并执行测试。
 
 ---
 

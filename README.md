@@ -1,6 +1,101 @@
-# React + TypeScript + Vite
+# Canvax - Canvas-based LLM Workflow Tool
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A visual canvas application for building and executing LLM workflows with node-based interactions.
+
+## Development
+
+### Running the Application
+
+```bash
+# Install dependencies
+pnpm install
+
+# Start development server
+pnpm dev
+
+# Build for production
+pnpm build
+
+# Preview production build
+pnpm preview
+```
+
+## Testing
+
+This project uses Vitest for unit testing with comprehensive coverage of core business logic.
+
+### Test Commands
+
+- `pnpm test` - Run tests in watch mode (interactive development)
+- `pnpm test:run` - Run all tests once (CI/CD)
+- `pnpm test:ui` - Run tests with interactive UI interface
+- `pnpm test:coverage` - Run tests and generate coverage report
+
+### Test Structure
+
+Test files are co-located with source files using the `.test.ts` or `.test.tsx` extension:
+
+```
+src/
+  algorithms/
+    collectUpstreamContext.ts
+    collectUpstreamContext.test.ts
+  state/
+    createProjectSlice.ts
+    createProjectSlice.test.ts
+  test/
+    setup.ts          # Test environment configuration
+    testUtils.ts      # Reusable test utilities
+    mockData.ts       # Mock data generators
+```
+
+### Test Coverage
+
+Current test coverage (as of Phase 5 completion):
+
+| Metric    | Coverage | Target |
+|-----------|----------|--------|
+| Statements| 87.08%   | 80%    |
+| Branches  | 91.52%   | 75%    |
+| Functions | 85.71%   | 80%    |
+| Lines     | 87.08%   | 80%    |
+
+**Covered Components:**
+- ✅ Graph algorithms (`validateNoCycle`, `collectUpstreamContext`)
+- ✅ State management (`ProjectSlice`, `RuntimeSlice`)
+- ✅ Node type utilities
+- ✅ Test utilities and setup
+
+### Writing Tests
+
+Follow these guidelines when adding tests:
+
+1. **Co-locate tests** - Place test files next to the source files they test
+2. **Use test utilities** - Leverage `createMockNode`, `createMockEdge`, etc. from `src/test/testUtils.ts`
+3. **Follow AAA pattern** - Arrange, Act, Assert
+4. **Descriptive names** - Test names should clearly describe what is being tested
+5. **Focus on behavior** - Test what the code does, not how it does it
+
+Example:
+
+```typescript
+import { describe, test, expect } from 'vitest'
+import { createMockNode } from '@/test/testUtils'
+import { myFunction } from './myModule'
+
+describe('myFunction', () => {
+  test('should handle empty input', () => {
+    // Arrange
+    const input = []
+    
+    // Act
+    const result = myFunction(input)
+    
+    // Assert
+    expect(result).toEqual([])
+  })
+})
+```
 
 Currently, two official plugins are available:
 
