@@ -134,6 +134,27 @@
   }
 }
 
+/* Branch edge highlighting styles */
+@layer components {
+  .edge-branch-highlighted {
+    stroke-width: 4 !important;
+    filter: drop-shadow(0 0 6px currentColor);
+    animation: edge-highlight-pulse 2s ease-in-out infinite;
+    z-index: 10;
+  }
+
+  @keyframes edge-highlight-pulse {
+    0%, 100% {
+      stroke-width: 4;
+      filter: drop-shadow(0 0 6px currentColor);
+    }
+    50% {
+      stroke-width: 4.5;
+      filter: drop-shadow(0 0 8px currentColor);
+    }
+  }
+}
+
 /* Syntax Highlighting Styles */
 @layer base {
   /* Light mode syntax highlighting */

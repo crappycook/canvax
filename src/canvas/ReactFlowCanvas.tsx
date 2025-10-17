@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ReactFlow,
   MiniMap,
@@ -14,9 +14,12 @@ import {
 
 import '@xyflow/react/dist/style.css'
 import { nodeTypes } from '@/components/node-types'
+import { edgeTypes } from '@/canvas/register'
 import { useStore } from '@/state/store'
 import { validateNoCycle } from '@/algorithms/collectUpstreamContext'
 import type { ChatNodeData } from '@/types'
+import { Inspector } from '@/canvas/components/Inspector'
+import { DeleteBranchConfirmDialog } from '@/canvas/components/DeleteBranchConfirmDialog'
 
 const DEFAULT_NODES: Node<ChatNodeData>[] = [
   {
@@ -51,6 +54,14 @@ export default function ReactFlowCanvas({ projectId: _projectId }: ReactFlowCanv
   const applyEdgeChanges = useStore(state => state.applyEdgeChanges)
   const connectEdge = useStore(state => state.connectEdge)
   const removeEdgesConnectedToNode = useStore(state => state.removeEdgesConnectedToNode)
+  const deleteBranchCascade = useStore(state => state.deleteBranchCascade)
+  const selectedNodeId = useStore(state => state.selectedNodeId)
+  const selectNode = useStore(state => state.selectNode)
+
+  // State for delete confirmation dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [pendingDeleteNodes, setPendingDeleteNodes] = useState<Node[]>([])
+  const [branchCount, setBranchCount] = useState(0)
 
   useEffect(() => {
     if (nodes.length === 0 && edges.length === 0) {
@@ -133,12 +144,57 @@ export default function ReactFlowCanvas({ projectId: _projectId }: ReactFlowCanv
 
   const handleNodesDelete = useCallback(
     (deletedNodes: Node[]) => {
-      deletedNodes.forEach(node => {
-        removeEdgesConnectedToNode(node.id)
+      // Check if any of the deleted nodes have child branches
+      const nodesWithBranches = deletedNodes.filter(node => {
+        const childEdges = edges.filter(e => e.source === node.id)
+        return childEdges.length > 0
       })
+
+      if (nodesWithBranches.length > 0) {
+        // Calculate total branch count
+        const totalBranches = nodesWithBranches.reduce((count, node) => {
+          const childEdges = edges.filter(e => e.source === node.id)
+          return count + childEdges.length
+        }, 0)
+
+        // Show confirmation dialog
+        setPendingDeleteNodes(deletedNodes)
+        setBranchCount(totalBranches)
+        setDeleteDialogOpen(true)
+      } else {
+        // No branches, proceed with normal deletion
+        deletedNodes.forEach(node => {
+          removeEdgesConnectedToNode(node.id)
+        })
+      }
     },
-    [removeEdgesConnectedToNode]
+    [edges, removeEdgesConnectedToNode]
   )
+
+  const handleDeleteConfirm = useCallback(() => {
+    // Delete all pending nodes using cascade delete
+    pendingDeleteNodes.forEach(node => {
+      deleteBranchCascade(node.id)
+    })
+    setPendingDeleteNodes([])
+    setBranchCount(0)
+  }, [pendingDeleteNodes, deleteBranchCascade])
+
+  const handleDeleteCancel = useCallback(() => {
+    setPendingDeleteNodes([])
+    setBranchCount(0)
+  }, [])
+
+  const handleNodeClick = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      selectNode(node.id)
+    },
+    [selectNode]
+  )
+
+  const handlePaneClick = useCallback(() => {
+    selectNode(null)
+  }, [selectNode])
 
   const memoizedNodes = useMemo(() => nodes, [nodes])
   const memoizedEdges = useMemo(() => edges, [edges])
@@ -149,16 +205,20 @@ export default function ReactFlowCanvas({ projectId: _projectId }: ReactFlowCanv
         nodes={memoizedNodes}
         edges={memoizedEdges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onConnect={handleConnect}
         onNodesDelete={handleNodesDelete}
+        onNodeClick={handleNodeClick}
+        onPaneClick={handlePaneClick}
         fitView
         fitViewOptions={{ padding: 0.2 }}
       >
         <MiniMap />
         <Controls />
         <Background />
+        <Inspector selectedNodeId={selectedNodeId} />
       </ReactFlow>
       {toastMessage && (
         <div className="pointer-events-none absolute left-1/2 top-8 -translate-x-1/2 animate-in fade-in slide-in-from-top-4 duration-300">
@@ -167,6 +227,13 @@ export default function ReactFlowCanvas({ projectId: _projectId }: ReactFlowCanv
           </div>
         </div>
       )}
+      <DeleteBranchConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        branchCount={branchCount}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
     </div>
   )
 }

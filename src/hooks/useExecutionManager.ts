@@ -2,7 +2,7 @@ import { useCallback, useRef } from 'react'
 import type { Edge, Node } from '@xyflow/react'
 import { useStore } from '@/state/store'
 import { type LLMClient } from '@/services/llmClient'
-import { collectUpstreamContext } from '@/algorithms/collectUpstreamContext'
+import { collectUpstreamContext, collectUpstreamContextSinglePath } from '@/algorithms/collectUpstreamContext'
 import { formatError } from '@/types/errors'
 import type { ChatMessage, ChatNodeData } from '@/types'
 
@@ -90,8 +90,11 @@ export function useExecutionManager(llmClient: LLMClient): ExecutionManager {
     const prompt = typeof nodeData.prompt === 'string' ? nodeData.prompt.trim() : ''
     if (!prompt) return
 
-    // 1. Collect upstream context with integrity checking
-    const context = collectUpstreamContext(nodeId, nodes, edges)
+    // 1. Detect if node is part of a branch and collect upstream context accordingly
+    const isBranchNode = Boolean(nodeData.branchId)
+    const context = isBranchNode
+      ? collectUpstreamContextSinglePath(nodeId, nodes, edges)
+      : collectUpstreamContext(nodeId, nodes, edges)
 
     // 2. Check for context integrity issues
     if (context.hasErrors) {

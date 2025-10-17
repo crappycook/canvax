@@ -22,11 +22,11 @@ export const ResponseNodeContent = memo(function ResponseNodeContent({
   nodeId,
   data,
 }: ResponseNodeContentProps) {
-  const convertNodeToInput = useStore(state => state.convertNodeToInput)
+  const createBranchFromNode = useStore(state => state.createBranchFromNode)
   const edges = useStore(state => state.edges)
   const nodes = useStore(state => state.nodes)
   const { retry } = useRunNode(nodeId)
-  
+
   const parentRef = useRef<HTMLDivElement>(null)
 
   const assistantMessages = useMemo(
@@ -38,19 +38,19 @@ export const ResponseNodeContent = memo(function ResponseNodeContent({
     () => (assistantMessages.length > 0 ? assistantMessages[assistantMessages.length - 1] : null),
     [assistantMessages]
   )
-  
+
   // Check if content is long enough to benefit from virtual scrolling
   const isLongContent = useMemo(
     () => (latestMessage?.content.length ?? 0) > VIRTUAL_SCROLL_THRESHOLD,
     [latestMessage?.content.length]
   )
-  
+
   // Split content into lines for virtual scrolling
   const contentLines = useMemo(
     () => (isLongContent && latestMessage ? latestMessage.content.split('\n') : []),
     [isLongContent, latestMessage]
   )
-  
+
   // Setup virtualizer for long content
   const virtualizer = useVirtualizer({
     count: contentLines.length,
@@ -90,9 +90,9 @@ export const ResponseNodeContent = memo(function ResponseNodeContent({
   }, [nodeId, edges, nodes, retry])
 
   const handleContinueConversation = useCallback(() => {
-    // Convert response node to input node by adding an empty prompt
-    convertNodeToInput(nodeId)
-  }, [nodeId, convertNodeToInput])
+    // Create a new branch from this response node
+    createBranchFromNode(nodeId)
+  }, [nodeId, createBranchFromNode])
 
   // Get source node label for ARIA label
   const sourceNodeLabel = useMemo(() => {
@@ -112,7 +112,7 @@ export const ResponseNodeContent = memo(function ResponseNodeContent({
       )}
 
       {/* Message Display */}
-      <div 
+      <div
         className="rounded-lg border bg-muted/30 p-3"
         role="article"
         aria-label={`Response from ${sourceNodeLabel}`}
@@ -162,7 +162,7 @@ export const ResponseNodeContent = memo(function ResponseNodeContent({
               </div>
             ) : (
               // Regular rendering for short content
-              <MarkdownRenderer 
+              <MarkdownRenderer
                 content={latestMessage.content}
                 className="max-w-none"
               />
@@ -171,7 +171,7 @@ export const ResponseNodeContent = memo(function ResponseNodeContent({
         )}
 
         {data.status === 'error' && (
-          <ErrorDisplay 
+          <ErrorDisplay
             error={data.error ? formatError(data.error) : formatError('An error occurred')}
             onRetry={handleRetry}
           />

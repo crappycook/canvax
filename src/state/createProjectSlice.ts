@@ -1,5 +1,5 @@
 import { type StateCreator } from 'zustand'
-import type { ProjectSnapshot } from '@/canvas/types'
+import type { ProjectSnapshot, ChatNodeData, CustomEdgeData } from '@/types'
 import type { CanvasSlice } from './createCanvasSlice'
 import type { NodesSlice } from './createNodesSlice'
 import type { EdgesSlice } from './createEdgesSlice'
@@ -46,6 +46,11 @@ function createEmptySnapshot(state: RootStateForProject, projectId: string, titl
     settings: {
       defaultModel: state.settings.defaultModel,
       language: state.settings.language,
+      autoSave: state.settings.autoSave ?? true,
+      theme: state.settings.theme ?? 'system',
+      apiKeys: state.settings.apiKeys ?? {},
+      maxTokens: state.settings.maxTokens ?? 2048,
+      temperature: state.settings.temperature ?? 0.7,
     },
     history: createDefaultHistory(),
   }
@@ -76,13 +81,27 @@ export const createProjectSlice: StateCreator<ProjectSlice & CanvasSlice & Nodes
         updatedAt: now,
       },
       graph: {
-        nodes,
-        edges,
+        nodes: nodes.map(node => ({
+          id: node.id,
+          position: node.position,
+          data: node.data as ChatNodeData,
+        })),
+        edges: edges.map(edge => ({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          data: edge.data as CustomEdgeData | undefined,
+        })),
         viewport,
       },
       settings: {
         defaultModel: state.settings.defaultModel,
         language: state.settings.language,
+        autoSave: state.settings.autoSave ?? true,
+        theme: state.settings.theme ?? 'system',
+        apiKeys: state.settings.apiKeys ?? {},
+        maxTokens: state.settings.maxTokens ?? 2048,
+        temperature: state.settings.temperature ?? 0.7,
       },
       history,
     }
@@ -91,10 +110,28 @@ export const createProjectSlice: StateCreator<ProjectSlice & CanvasSlice & Nodes
   hydrateProject: (snapshot: ProjectSnapshot) => {
     const history = (snapshot.history as CanvasSlice['history']) ?? createDefaultHistory()
 
+    // Migrate nodes to ensure all required fields exist
+    const migratedNodes = snapshot.graph.nodes.map(node => ({
+      id: node.id,
+      type: 'chat' as const,
+      position: node.position,
+      data: {
+        // Preserve all fields from snapshot
+        ...node.data,
+        // Ensure all required fields have default values (only if missing)
+        label: node.data.label ?? 'Untitled',
+        model: node.data.model ?? 'gpt-4o',
+        prompt: node.data.prompt ?? '',
+        messages: node.data.messages ?? [],
+        status: node.data.status ?? 'idle',
+        createdAt: node.data.createdAt ?? Date.now(),
+      } as ChatNodeData,
+    }))
+
     set(state => ({
       currentProjectId: snapshot.id,
       snapshot,
-      nodes: snapshot.graph.nodes as NodesSlice['nodes'],
+      nodes: migratedNodes as NodesSlice['nodes'],
       edges: snapshot.graph.edges as EdgesSlice['edges'],
       viewport: snapshot.graph.viewport,
       selection: [],

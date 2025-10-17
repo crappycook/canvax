@@ -5,6 +5,8 @@ export interface BaseNodeData {
 
 export interface CustomEdgeData {
   createdAt: number;
+  branchIndex?: number;
+  isBranchEdge?: boolean;
 }
 
 export interface ChatMessage {
@@ -48,7 +50,37 @@ export interface ChatNodeData extends BaseNodeData, Record<string, unknown> {
   createdAt: number;
   nodeType?: NodeType;
   sourceNodeId?: string;
+  branchId?: string;
+  parentNodeId?: string;
+  branchIndex?: number;
 }
+
+export interface BranchMetadata {
+  branchId: string;
+  parentNodeId: string;
+  depth: number;
+  messageCount: number;
+  createdAt: number;
+}
+
+export interface BranchDeletionHistoryEntry {
+  type: 'branch_deletion';
+  timestamp: number;
+  deletedNodes: Array<{
+    id: string;
+    type: string;
+    position: { x: number; y: number };
+    data: ChatNodeData;
+  }>;
+  deletedEdges: Array<{
+    id: string;
+    source: string;
+    target: string;
+    data?: CustomEdgeData;
+  }>;
+}
+
+export type HistoryEntry = BranchDeletionHistoryEntry
 
 export interface ProjectSnapshot {
   id: string;
@@ -67,6 +99,7 @@ export interface ProjectSnapshot {
       id: string;
       source: string;
       target: string;
+      data?: CustomEdgeData;
     }>;
     viewport: { x: number; y: number; zoom: number };
   };

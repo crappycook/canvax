@@ -365,6 +365,98 @@ export function collectUpstreamContext({
 }
 ```
 
+**对话分支（Conversation Branching）架构设计**：
+
+为支持从任意 Response 节点继续追问并形成独立分支，需要以下调整：
+
+1. **分支路径隔离**：
+   - 修改 `collectUpstreamContext` 为单路径追溯模式：从当前节点向上游遍历时，遇到多个上游节点（分支点）时，仅选择**直接父节点**（最近的上游），而非收集所有上游分支
+   - 实现方式：将 BFS/DFS 改为**单链追溯**，每次只取 `edges.find(e => e.target === current)` 的第一个匹配（或通过 edge metadata 标记主路径）
+   - 这确保每个分支的上下文是独立的 message history，不会混入其他分支的消息
+
+2. **分支创建机制**：
+   - 在 `NodesSlice` 添加 `createBranchFromResponse(responseNodeId)` 方法：
+     - 创建新的 Input 节点（空 prompt，继承父节点的 modelId）
+     - 创建新的 Response 节点（占位，等待用户输入后运行）
+     - 添加边：`responseNode → newInputNode → newResponseNode`
+     - 自动布局：新节点位置基于父节点位置 + 偏移量（支持多分支时横向或纵向展开）
+
+3. **分支元数据**：
+   - 在 `ChatNodeData` 添加可选字段 `branchId?: string` 和 `parentNodeId?: string`
+   - 用于追踪分支关系和可视化标识（如分支颜色、序号）
+
+4. **边的语义增强**：
+   - 为 `Edge` 添加 `data.branchIndex?: number`，标记从同一父节点发出的多条边的顺序
+   - 用于自动布局时计算分支偏移量
+
+5. **自动布局算法**：
+   - 实现 `autoLayoutBranches(parentNodeId)` 工具函数：
+     - 检测从 `parentNodeId` 发出的所有子分支
+     - 按 `branchIndex` 排序，计算每个分支的起始位置（横向间隔或纵向堆叠）
+     - 递归布局每个分支的后续节点
+
+```ts
+// src/lib/graph.ts - 单路径上下文收集（分支隔离版本）
+export function collectUpstreamContextSinglePath({
+  nodeId,
+  nodes,
+  edges,
+  limit = 4,
+}: CollectContextParams): ChatMessage[] {
+  const result: ChatMessage[] = []
+  let currentId: string | null = nodeId
+
+  while (currentId) {
+    const node = nodes.find(n => n.id === currentId)
+    if (node?.data.messages?.length) {
+      // 收集当前节点的最后 N 条消息
+      result.unshift(...node.data.messages.slice(-limit))
+    }
+
+    // 仅追溯直接父节点（单路径）
+    const parentEdge = edges.find(e => e.target === currentId)
+    currentId = parentEdge?.source ?? null
+  }
+
+  return result
+}
+```
+
+```ts
+// src/state/createNodesSlice.ts - 分支创建方法
+createBranchFromResponse: (responseNodeId: string) => {
+  const { nodes, edges, createNode, addEdge } = get()
+  const responseNode = nodes.find(n => n.id === responseNodeId)
+  if (!responseNode) return
+
+  // 计算新节点位置（在父节点下方 + 横向偏移）
+  const existingBranches = edges.filter(e => e.source === responseNodeId).length
+  const offsetX = existingBranches * 350 // 横向间隔
+  const offsetY = 200 // 纵向间隔
+
+  // 创建新 Input 节点
+  const inputNode = createNode('chat', {
+    x: responseNode.position.x + offsetX,
+    y: responseNode.position.y + offsetY,
+  })
+  inputNode.data.modelId = responseNode.data.modelId
+  inputNode.data.branchId = `${responseNodeId}-branch-${existingBranches}`
+  inputNode.data.parentNodeId = responseNodeId
+
+  // 创建新 Response 节点（占位）
+  const responseNodeNew = createNode('chat', {
+    x: inputNode.position.x,
+    y: inputNode.position.y + offsetY,
+  })
+  responseNodeNew.data.branchId = inputNode.data.branchId
+  responseNodeNew.data.parentNodeId = inputNode.id
+
+  // 添加边
+  addEdge({ source: responseNodeId, target: inputNode.id, data: { branchIndex: existingBranches } })
+  addEdge({ source: inputNode.id, target: responseNodeNew.id })
+}
+```
+
 ```ts
 // src/hooks/useExecutionManager.ts
 export function useExecutionManager() {
@@ -419,5 +511,61 @@ export function useExecutionManager() {
 ### 十、落地顺序映射里程碑
 
 - 里程碑 A（P0）：`AppShell`/`TopBar`/`ReactFlowCanvas`/`ChatNode`/`SettingsModal`/Zustand 核心切片/保存打开/运行请求
-- 里程碑 B（P1）：`MiniMap`/`Controls`/模板/Markdown 渲染/导出/全文搜索/虚拟化
+- 里程碑 B（P1）：`MiniMap`/`Controls`/模板/Markdown 渲染/导出/全文搜索/虚拟化/**对话分支功能**
 - 里程碑 C（P2）：主题切换/并发队列/中断/版本快照/命令面板
+
+---
+
+### 十一、对话分支功能详细设计
+
+**核心原则**：
+- 每个分支是独立的对话历史（message history），不同分支之间完全隔离
+- 从任意 Response 节点可以创建多个分支，每个分支都从该节点的上下文继续
+- 上下文收集算法确保只追溯当前分支的单一路径，不跨分支混合消息
+
+**用户交互流程**：
+```mermaid
+flowchart TD
+  A[Response 节点显示结果] --> B[用户点击 Continue Conversation]
+  B --> C[自动创建 Input 节点]
+  C --> D[用户输入新问题]
+  D --> E[自动创建 Response 节点]
+  E --> F[运行 LLM 请求]
+  F --> G{满意?}
+  G -- 否 --> B2[再次点击 Continue 创建新分支]
+  G -- 是 --> H[继续或保存]
+  B2 --> C
+```
+
+**技术实现要点**：
+
+1. **分支标识与追踪**：
+   ```ts
+   interface ChatNodeData {
+     // ... 现有字段
+     branchId?: string        // 分支唯一标识（从分支起点继承）
+     parentNodeId?: string    // 直接父节点 ID
+     branchIndex?: number     // 同一父节点的第几个分支（用于布局）
+   }
+   ```
+
+2. **单路径上下文收集**：
+   - 替换现有的 `collectUpstreamContext` 为单链追溯模式
+   - 从当前节点开始，沿着 `parentNodeId` 或边关系向上追溯
+   - 遇到分支点时，只选择直接父节点，忽略其他分支
+   - 收集路径上所有节点的消息，按时间顺序组装
+
+3. **自动布局策略**：
+   - 第一个分支：垂直向下布局（Y + 200px）
+   - 后续分支：在第一个分支基础上横向偏移（X + 350px * branchIndex）
+   - 可选：实现智能布局算法，检测画布空间并动态调整
+
+4. **分支可视化**：
+   - 为不同分支的边添加不同颜色或样式
+   - 在节点上显示分支序号徽章（如 "Branch 1", "Branch 2"）
+   - 高亮显示当前选中节点所属的完整分支路径
+
+5. **Inspector 面板增强**：
+   - 显示当前节点的分支路径（面包屑导航）
+   - 列出同级分支节点，支持快速切换
+   - 显示分支统计信息（如分支深度、消息数量）

@@ -39,11 +39,18 @@ export function createMockEdge(overrides?: Partial<Edge>): Edge {
     id: 'test-edge-1',
     source: 'node-1',
     target: 'node-2',
+    data: {
+      createdAt: Date.now(),
+    },
   }
 
   return {
     ...defaultEdge,
     ...overrides,
+    data: {
+      ...defaultEdge.data,
+      ...overrides?.data,
+    },
   }
 }
 

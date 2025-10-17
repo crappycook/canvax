@@ -9,6 +9,7 @@ import { useNodeType } from '@/canvas/nodes/nodeTypeUtils'
 import { InputNodeContent } from '@/canvas/nodes/InputNodeContent'
 import { ResponseNodeContent } from '@/canvas/nodes/ResponseNodeContent'
 import { HybridNodeContent } from '@/canvas/nodes/HybridNodeContent'
+import { BranchBadge } from '@/canvas/components/BranchBadge'
 import './nodeStyles.css'
 
 interface ChatNodeProps extends NodeProps {
@@ -20,6 +21,7 @@ export const ChatNode = memo(({ id, data }: ChatNodeProps) => {
   const nodeData = data as ChatNodeData
 
   const edges = useStore(state => state.edges)
+  const highlightedNodeIds = useStore(state => state.highlightedNodeIds)
 
   // Determine node type based on connections and data
   const nodeType = useNodeType(nodeId, nodeData, edges)
@@ -27,14 +29,23 @@ export const ChatNode = memo(({ id, data }: ChatNodeProps) => {
   // Select icon based on node type
   const nodeIcon = nodeType === 'response' ? <MessageSquare /> : <Edit3 />
 
+  // Check if this node is highlighted
+  const isHighlighted = highlightedNodeIds.has(nodeId)
+
   return (
     <BaseNode
       className={cn(
         'node-chat',
         `node-${nodeType}`,
-        `node-${nodeData.status}`
+        `node-${nodeData.status}`,
+        isHighlighted && 'node-branch-highlighted'
       )}
     >
+      {/* Render branch badge if node is part of a branch */}
+      {nodeData.branchId && nodeData.branchIndex !== undefined && (
+        <BranchBadge branchIndex={nodeData.branchIndex} branchId={nodeData.branchId} />
+      )}
+      
       <CustomHeader
         title={nodeData.label}
         description={nodeData.description}

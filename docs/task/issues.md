@@ -33,6 +33,20 @@
       统一处理 401/429/网络错误，节点内展示错误条并支持一键 Retry。\
       ✅ 验证：mock 失败响应时，错误信息可读、retry 后恢复正常。
 
+## Phase 3.1 · 对话分支（Conversation Branching）
+- [ ] Response 节点追问功能\
+      在 `ResponseNodeContent` 添加"Continue Conversation"按钮，点击后自动创建新的 Input 节点和 Response 节点，形成对话链。\
+      ✅ 验证：点击按钮后，新 Input 节点自动连接到当前 Response 节点；新 Response 节点连接到新 Input 节点；节点位置自动布局在下方。
+- [ ] 多分支上下文隔离\
+      修改 `collectUpstreamContext` 算法，确保每条分支路径的上下文收集遵循单一路径原则（从当前节点向上追溯到根节点，不跨分支）。\
+      ✅ 验证：创建分支后，每个分支的 LLM 请求上下文仅包含该分支路径上的消息；不同分支之间的消息互不干扰。
+- [ ] 分支可视化优化\
+      为分支节点添加视觉标识（如分支序号、颜色区分），优化自动布局算法使分支结构清晰可读。\
+      ✅ 验证：多个分支从同一节点发散时，布局不重叠；可通过视觉快速识别分支关系。
+- [ ] 分支管理与导航\
+      在 Inspector 面板显示当前节点所属分支路径，支持快速跳转到分支起点或其他分支节点。\
+      ✅ 验证：选中分支节点时，Inspector 显示完整路径；点击路径节点可聚焦到对应节点。
+
 ## Phase 4 · Settings, Persistence & UX Polish
 - [x] 设置 Modal + WebCrypto\
       实现 API Key 加密存储、默认模型/语言配置，缺省时阻止运行并提示。\

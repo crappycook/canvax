@@ -139,8 +139,13 @@ describe('ProjectSlice', () => {
 
       const snapshot = createMockProjectSnapshot({
         graph: {
-          nodes: [node1, node2],
-          edges: [edge1],
+          nodes: [
+            { id: node1.id, position: node1.position, data: node1.data },
+            { id: node2.id, position: node2.position, data: node2.data },
+          ],
+          edges: [
+            { id: edge1.id, source: edge1.source, target: edge1.target, data: edge1.data as any },
+          ],
           viewport: { x: 0, y: 0, zoom: 1 },
         },
       })
@@ -254,6 +259,232 @@ describe('ProjectSlice', () => {
     })
   })
 
+  describe('branch metadata persistence', () => {
+    test('preserves branch metadata in node data when deriving snapshot', () => {
+      const branchNode = createMockNode({
+        id: 'branch-node-1',
+        data: {
+          label: 'Branch Node',
+          model: 'gpt-4o',
+          prompt: 'Branch prompt',
+          messages: [],
+          status: 'idle',
+          createdAt: Date.now(),
+          branchId: 'branch-123',
+          parentNodeId: 'parent-node-1',
+          branchIndex: 0,
+        },
+      })
+
+      store.getState().setNodes([branchNode])
+
+      const snapshot = store.getState().deriveSnapshot()
+
+      expect(snapshot.graph.nodes).toHaveLength(1)
+      expect(snapshot.graph.nodes[0].data.branchId).toBe('branch-123')
+      expect(snapshot.graph.nodes[0].data.parentNodeId).toBe('parent-node-1')
+      expect(snapshot.graph.nodes[0].data.branchIndex).toBe(0)
+    })
+
+    test('preserves edge branch metadata when deriving snapshot', () => {
+      const branchEdge = createMockEdge({
+        id: 'branch-edge-1',
+        source: 'node-1',
+        target: 'node-2',
+        data: {
+          createdAt: Date.now(),
+          branchIndex: 1,
+          isBranchEdge: true,
+        },
+      })
+
+      store.getState().setEdges([branchEdge])
+
+      const snapshot = store.getState().deriveSnapshot()
+
+      expect(snapshot.graph.edges).toHaveLength(1)
+      expect(snapshot.graph.edges[0].data).toBeDefined()
+      expect(snapshot.graph.edges[0].data?.branchIndex).toBe(1)
+      expect(snapshot.graph.edges[0].data?.isBranchEdge).toBe(true)
+      expect(snapshot.graph.edges[0].data?.createdAt).toBeDefined()
+    })
+
+    test('restores branch metadata from snapshot when hydrating', () => {
+      const branchNode = createMockNode({
+        id: 'branch-node-1',
+        data: {
+          label: 'Branch Node',
+          model: 'gpt-4o',
+          prompt: 'Branch prompt',
+          messages: [],
+          status: 'idle',
+          createdAt: Date.now(),
+          branchId: 'branch-456',
+          parentNodeId: 'parent-node-2',
+          branchIndex: 2,
+        },
+      })
+
+      const branchEdge = createMockEdge({
+        id: 'branch-edge-1',
+        source: 'parent-node-2',
+        target: 'branch-node-1',
+        data: {
+          createdAt: Date.now(),
+          branchIndex: 2,
+          isBranchEdge: true,
+        },
+      })
+
+      const snapshot = createMockProjectSnapshot({
+        graph: {
+          nodes: [
+            { id: branchNode.id, position: branchNode.position, data: branchNode.data },
+          ],
+          edges: [
+            { id: branchEdge.id, source: branchEdge.source, target: branchEdge.target, data: branchEdge.data as any },
+          ],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        },
+      })
+
+      store.getState().hydrateProject(snapshot)
+
+      const state = store.getState()
+      expect(state.nodes).toHaveLength(1)
+      expect(state.nodes[0].data.branchId).toBe('branch-456')
+      expect(state.nodes[0].data.parentNodeId).toBe('parent-node-2')
+      expect(state.nodes[0].data.branchIndex).toBe(2)
+
+      expect(state.edges).toHaveLength(1)
+      expect(state.edges[0].data?.branchIndex).toBe(2)
+      expect(state.edges[0].data?.isBranchEdge).toBe(true)
+    })
+
+    test('preserves multiple branches with different metadata', () => {
+      const parentNode = createMockNode({ id: 'parent-1' })
+      const branch1Node = createMockNode({
+        id: 'branch-1',
+        data: {
+          label: 'Branch 1',
+          model: 'gpt-4o',
+          prompt: '',
+          messages: [],
+          status: 'idle',
+          createdAt: Date.now(),
+          branchId: 'branch-1-id',
+          parentNodeId: 'parent-1',
+          branchIndex: 0,
+        },
+      })
+      const branch2Node = createMockNode({
+        id: 'branch-2',
+        data: {
+          label: 'Branch 2',
+          model: 'gpt-4o',
+          prompt: '',
+          messages: [],
+          status: 'idle',
+          createdAt: Date.now(),
+          branchId: 'branch-2-id',
+          parentNodeId: 'parent-1',
+          branchIndex: 1,
+        },
+      })
+
+      const edge1 = createMockEdge({
+        id: 'edge-1',
+        source: 'parent-1',
+        target: 'branch-1',
+        data: {
+          createdAt: Date.now(),
+          branchIndex: 0,
+          isBranchEdge: true,
+        },
+      })
+      const edge2 = createMockEdge({
+        id: 'edge-2',
+        source: 'parent-1',
+        target: 'branch-2',
+        data: {
+          createdAt: Date.now(),
+          branchIndex: 1,
+          isBranchEdge: true,
+        },
+      })
+
+      store.getState().setNodes([parentNode, branch1Node, branch2Node])
+      store.getState().setEdges([edge1, edge2])
+
+      const snapshot = store.getState().deriveSnapshot()
+
+      expect(snapshot.graph.nodes).toHaveLength(3)
+      expect(snapshot.graph.edges).toHaveLength(2)
+
+      // Verify branch 1
+      const savedBranch1 = snapshot.graph.nodes.find(n => n.id === 'branch-1')
+      expect(savedBranch1?.data.branchId).toBe('branch-1-id')
+      expect(savedBranch1?.data.branchIndex).toBe(0)
+
+      // Verify branch 2
+      const savedBranch2 = snapshot.graph.nodes.find(n => n.id === 'branch-2')
+      expect(savedBranch2?.data.branchId).toBe('branch-2-id')
+      expect(savedBranch2?.data.branchIndex).toBe(1)
+
+      // Verify edges
+      const savedEdge1 = snapshot.graph.edges.find(e => e.id === 'edge-1')
+      expect(savedEdge1?.data?.branchIndex).toBe(0)
+      expect(savedEdge1?.data?.isBranchEdge).toBe(true)
+
+      const savedEdge2 = snapshot.graph.edges.find(e => e.id === 'edge-2')
+      expect(savedEdge2?.data?.branchIndex).toBe(1)
+      expect(savedEdge2?.data?.isBranchEdge).toBe(true)
+    })
+
+    test('handles nodes without branch metadata', () => {
+      const regularNode = createMockNode({
+        id: 'regular-node',
+        data: {
+          label: 'Regular Node',
+          model: 'gpt-4o',
+          prompt: '',
+          messages: [],
+          status: 'idle',
+          createdAt: Date.now(),
+        },
+      })
+
+      store.getState().setNodes([regularNode])
+
+      const snapshot = store.getState().deriveSnapshot()
+
+      expect(snapshot.graph.nodes).toHaveLength(1)
+      expect(snapshot.graph.nodes[0].data.branchId).toBeUndefined()
+      expect(snapshot.graph.nodes[0].data.parentNodeId).toBeUndefined()
+      expect(snapshot.graph.nodes[0].data.branchIndex).toBeUndefined()
+    })
+
+    test('handles edges without branch metadata', () => {
+      const regularEdge = createMockEdge({
+        id: 'regular-edge',
+        source: 'node-1',
+        target: 'node-2',
+        data: {
+          createdAt: Date.now(),
+        },
+      })
+
+      store.getState().setEdges([regularEdge])
+
+      const snapshot = store.getState().deriveSnapshot()
+
+      expect(snapshot.graph.edges).toHaveLength(1)
+      expect(snapshot.graph.edges[0].data?.branchIndex).toBeUndefined()
+      expect(snapshot.graph.edges[0].data?.isBranchEdge).toBeUndefined()
+      expect(snapshot.graph.edges[0].data?.createdAt).toBeDefined()
+    })
+  })
+
   describe('newProject', () => {
     test('creates empty project', () => {
       const projectId = store.getState().newProject()
@@ -321,6 +552,369 @@ describe('ProjectSlice', () => {
       const state = store.getState()
       expect(state.snapshot?.settings.defaultModel).toBe('gpt-4-turbo')
       expect(state.snapshot?.settings.language).toBe('zh')
+    })
+  })
+
+  describe('JSON export/import with branches', () => {
+    test('exports project with branch metadata to JSON', () => {
+      const parentNode = createMockNode({ id: 'parent-1' })
+      const branchNode = createMockNode({
+        id: 'branch-1',
+        data: {
+          label: 'Branch Node',
+          model: 'gpt-4o',
+          prompt: 'Branch prompt',
+          messages: [],
+          status: 'idle',
+          createdAt: Date.now(),
+          branchId: 'branch-123',
+          parentNodeId: 'parent-1',
+          branchIndex: 0,
+        },
+      })
+      const branchEdge = createMockEdge({
+        id: 'branch-edge-1',
+        source: 'parent-1',
+        target: 'branch-1',
+        data: {
+          createdAt: Date.now(),
+          branchIndex: 0,
+          isBranchEdge: true,
+        },
+      })
+
+      store.getState().setNodes([parentNode, branchNode])
+      store.getState().setEdges([branchEdge])
+
+      const snapshot = store.getState().deriveSnapshot()
+      const jsonString = JSON.stringify(snapshot, null, 2)
+      const parsed = JSON.parse(jsonString)
+
+      // Verify branch node metadata is in JSON
+      const exportedBranchNode = parsed.graph.nodes.find((n: { id: string }) => n.id === 'branch-1')
+      expect(exportedBranchNode.data.branchId).toBe('branch-123')
+      expect(exportedBranchNode.data.parentNodeId).toBe('parent-1')
+      expect(exportedBranchNode.data.branchIndex).toBe(0)
+
+      // Verify branch edge metadata is in JSON
+      const exportedBranchEdge = parsed.graph.edges.find((e: { id: string }) => e.id === 'branch-edge-1')
+      expect(exportedBranchEdge.data.branchIndex).toBe(0)
+      expect(exportedBranchEdge.data.isBranchEdge).toBe(true)
+    })
+
+    test('imports project with branch metadata from JSON', () => {
+      const jsonData = {
+        id: 'imported-project',
+        version: 1,
+        metadata: {
+          title: 'Imported Project',
+          updatedAt: Date.now(),
+        },
+        graph: {
+          nodes: [
+            {
+              id: 'parent-1',
+              position: { x: 0, y: 0 },
+              data: {
+                label: 'Parent Node',
+                model: 'gpt-4o',
+                prompt: '',
+                messages: [],
+                status: 'idle' as const,
+                createdAt: Date.now(),
+              },
+            },
+            {
+              id: 'branch-1',
+              position: { x: 350, y: 200 },
+              data: {
+                label: 'Branch Node',
+                model: 'gpt-4o',
+                prompt: 'Branch prompt',
+                messages: [],
+                status: 'idle' as const,
+                createdAt: Date.now(),
+                branchId: 'branch-imported-123',
+                parentNodeId: 'parent-1',
+                branchIndex: 0,
+              },
+            },
+          ],
+          edges: [
+            {
+              id: 'branch-edge-1',
+              source: 'parent-1',
+              target: 'branch-1',
+              data: {
+                createdAt: Date.now(),
+                branchIndex: 0,
+                isBranchEdge: true,
+              },
+            },
+          ],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        },
+        settings: {
+          defaultModel: 'gpt-4o',
+          language: 'en' as const,
+          autoSave: true,
+          theme: 'system' as const,
+          apiKeys: {},
+          maxTokens: 2000,
+          temperature: 0.7,
+        },
+        history: null,
+      }
+
+      store.getState().hydrateProject(jsonData)
+
+      const state = store.getState()
+      
+      // Verify branch node was imported correctly
+      const importedBranchNode = state.nodes.find(n => n.id === 'branch-1')
+      expect(importedBranchNode).toBeDefined()
+      expect(importedBranchNode?.data.branchId).toBe('branch-imported-123')
+      expect(importedBranchNode?.data.parentNodeId).toBe('parent-1')
+      expect(importedBranchNode?.data.branchIndex).toBe(0)
+
+      // Verify branch edge was imported correctly
+      const importedBranchEdge = state.edges.find(e => e.id === 'branch-edge-1')
+      expect(importedBranchEdge).toBeDefined()
+      expect(importedBranchEdge?.data?.branchIndex).toBe(0)
+      expect(importedBranchEdge?.data?.isBranchEdge).toBe(true)
+    })
+
+    test('preserves branch relationships after export/import cycle', () => {
+      // Create a complex branch structure
+      const parentNode = createMockNode({ id: 'parent-1' })
+      const branch1Input = createMockNode({
+        id: 'branch-1-input',
+        data: {
+          label: 'Branch 1 Input',
+          model: 'gpt-4o',
+          prompt: 'First branch',
+          messages: [],
+          status: 'idle',
+          createdAt: Date.now(),
+          branchId: 'branch-1',
+          parentNodeId: 'parent-1',
+          branchIndex: 0,
+        },
+      })
+      const branch1Response = createMockNode({
+        id: 'branch-1-response',
+        data: {
+          label: 'Branch 1 Response',
+          model: 'gpt-4o',
+          prompt: '',
+          messages: [],
+          status: 'success',
+          createdAt: Date.now(),
+          branchId: 'branch-1',
+          parentNodeId: 'branch-1-input',
+          branchIndex: 0,
+        },
+      })
+      const branch2Input = createMockNode({
+        id: 'branch-2-input',
+        data: {
+          label: 'Branch 2 Input',
+          model: 'gpt-4o',
+          prompt: 'Second branch',
+          messages: [],
+          status: 'idle',
+          createdAt: Date.now(),
+          branchId: 'branch-2',
+          parentNodeId: 'parent-1',
+          branchIndex: 1,
+        },
+      })
+
+      const edge1 = createMockEdge({
+        id: 'edge-1',
+        source: 'parent-1',
+        target: 'branch-1-input',
+        data: { createdAt: Date.now(), branchIndex: 0, isBranchEdge: true },
+      })
+      const edge2 = createMockEdge({
+        id: 'edge-2',
+        source: 'branch-1-input',
+        target: 'branch-1-response',
+        data: { createdAt: Date.now(), branchIndex: 0, isBranchEdge: true },
+      })
+      const edge3 = createMockEdge({
+        id: 'edge-3',
+        source: 'parent-1',
+        target: 'branch-2-input',
+        data: { createdAt: Date.now(), branchIndex: 1, isBranchEdge: true },
+      })
+
+      store.getState().setNodes([parentNode, branch1Input, branch1Response, branch2Input])
+      store.getState().setEdges([edge1, edge2, edge3])
+
+      // Export to JSON
+      const snapshot = store.getState().deriveSnapshot()
+      const jsonString = JSON.stringify(snapshot)
+      const parsed = JSON.parse(jsonString)
+
+      // Create new store and import
+      const newStore = createTestStore()
+      newStore.getState().hydrateProject(parsed)
+
+      const newState = newStore.getState()
+
+      // Verify all nodes preserved
+      expect(newState.nodes).toHaveLength(4)
+
+      // Verify branch 1 relationships
+      const b1Input = newState.nodes.find(n => n.id === 'branch-1-input')
+      expect(b1Input?.data.branchId).toBe('branch-1')
+      expect(b1Input?.data.parentNodeId).toBe('parent-1')
+      expect(b1Input?.data.branchIndex).toBe(0)
+
+      const b1Response = newState.nodes.find(n => n.id === 'branch-1-response')
+      expect(b1Response?.data.branchId).toBe('branch-1')
+      expect(b1Response?.data.parentNodeId).toBe('branch-1-input')
+      expect(b1Response?.data.branchIndex).toBe(0)
+
+      // Verify branch 2 relationships
+      const b2Input = newState.nodes.find(n => n.id === 'branch-2-input')
+      expect(b2Input?.data.branchId).toBe('branch-2')
+      expect(b2Input?.data.parentNodeId).toBe('parent-1')
+      expect(b2Input?.data.branchIndex).toBe(1)
+
+      // Verify all edges preserved
+      expect(newState.edges).toHaveLength(3)
+
+      // Verify edge metadata
+      const e1 = newState.edges.find(e => e.id === 'edge-1')
+      expect(e1?.data?.branchIndex).toBe(0)
+      expect(e1?.data?.isBranchEdge).toBe(true)
+
+      const e2 = newState.edges.find(e => e.id === 'edge-2')
+      expect(e2?.data?.branchIndex).toBe(0)
+      expect(e2?.data?.isBranchEdge).toBe(true)
+
+      const e3 = newState.edges.find(e => e.id === 'edge-3')
+      expect(e3?.data?.branchIndex).toBe(1)
+      expect(e3?.data?.isBranchEdge).toBe(true)
+    })
+
+    test('preserves branch visual styling after import', () => {
+      const branchNode = createMockNode({
+        id: 'branch-1',
+        position: { x: 350, y: 200 },
+        data: {
+          label: 'Branch Node',
+          model: 'gpt-4o',
+          prompt: '',
+          messages: [],
+          status: 'idle',
+          createdAt: Date.now(),
+          branchId: 'branch-123',
+          parentNodeId: 'parent-1',
+          branchIndex: 2,
+        },
+      })
+
+      const branchEdge = createMockEdge({
+        id: 'branch-edge-1',
+        source: 'parent-1',
+        target: 'branch-1',
+        data: {
+          createdAt: Date.now(),
+          branchIndex: 2,
+          isBranchEdge: true,
+        },
+      })
+
+      store.getState().setNodes([branchNode])
+      store.getState().setEdges([branchEdge])
+
+      // Export and re-import
+      const snapshot = store.getState().deriveSnapshot()
+      const jsonString = JSON.stringify(snapshot)
+      const parsed = JSON.parse(jsonString)
+
+      const newStore = createTestStore()
+      newStore.getState().hydrateProject(parsed)
+
+      const newState = newStore.getState()
+
+      // Verify position preserved (for layout)
+      const importedNode = newState.nodes.find(n => n.id === 'branch-1')
+      expect(importedNode?.position).toEqual({ x: 350, y: 200 })
+
+      // Verify branch index preserved (for styling)
+      expect(importedNode?.data.branchIndex).toBe(2)
+
+      const importedEdge = newState.edges.find(e => e.id === 'branch-edge-1')
+      expect(importedEdge?.data?.branchIndex).toBe(2)
+      expect(importedEdge?.data?.isBranchEdge).toBe(true)
+    })
+
+    test('handles mixed branch and non-branch nodes in export/import', () => {
+      const regularNode = createMockNode({ id: 'regular-1' })
+      const branchNode = createMockNode({
+        id: 'branch-1',
+        data: {
+          label: 'Branch Node',
+          model: 'gpt-4o',
+          prompt: '',
+          messages: [],
+          status: 'idle',
+          createdAt: Date.now(),
+          branchId: 'branch-123',
+          parentNodeId: 'regular-1',
+          branchIndex: 0,
+        },
+      })
+
+      const regularEdge = createMockEdge({
+        id: 'regular-edge',
+        source: 'regular-1',
+        target: 'regular-2',
+        data: { createdAt: Date.now() },
+      })
+      const branchEdge = createMockEdge({
+        id: 'branch-edge',
+        source: 'regular-1',
+        target: 'branch-1',
+        data: {
+          createdAt: Date.now(),
+          branchIndex: 0,
+          isBranchEdge: true,
+        },
+      })
+
+      store.getState().setNodes([regularNode, branchNode])
+      store.getState().setEdges([regularEdge, branchEdge])
+
+      // Export and import
+      const snapshot = store.getState().deriveSnapshot()
+      const jsonString = JSON.stringify(snapshot)
+      const parsed = JSON.parse(jsonString)
+
+      const newStore = createTestStore()
+      newStore.getState().hydrateProject(parsed)
+
+      const newState = newStore.getState()
+
+      // Verify regular node has no branch metadata
+      const importedRegular = newState.nodes.find(n => n.id === 'regular-1')
+      expect(importedRegular?.data.branchId).toBeUndefined()
+
+      // Verify branch node has metadata
+      const importedBranch = newState.nodes.find(n => n.id === 'branch-1')
+      expect(importedBranch?.data.branchId).toBe('branch-123')
+
+      // Verify regular edge has no branch metadata
+      const importedRegularEdge = newState.edges.find(e => e.id === 'regular-edge')
+      expect(importedRegularEdge?.data?.isBranchEdge).toBeUndefined()
+
+      // Verify branch edge has metadata
+      const importedBranchEdge = newState.edges.find(e => e.id === 'branch-edge')
+      expect(importedBranchEdge?.data?.isBranchEdge).toBe(true)
     })
   })
 })

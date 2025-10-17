@@ -50,3 +50,41 @@
   border-color: hsl(0 84% 60%);
   background: hsl(0 84% 97%);
 }
+
+/* Branch highlighting styles */
+.node-branch-highlighted {
+  border-color: hsl(220 90% 56%) !important;
+  box-shadow: 0 0 0 3px hsl(220 90% 56% / 0.25), 
+              0 0 12px hsl(220 90% 56% / 0.4);
+  position: relative;
+  z-index: 10;
+  animation: highlight-pulse 2s ease-in-out infinite;
+}
+
+/* Dark mode support for branch highlighting */
+.dark .node-branch-highlighted {
+  border-color: hsl(220 90% 66%) !important;
+  animation: highlight-pulse-dark 2s ease-in-out infinite;
+}
+
+@keyframes highlight-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 3px hsl(220 90% 56% / 0.25), 
+                0 0 12px hsl(220 90% 56% / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px hsl(220 90% 56% / 0.35), 
+                0 0 16px hsl(220 90% 56% / 0.5);
+  }
+}
+
+@keyframes highlight-pulse-dark {
+  0%, 100% {
+    box-shadow: 0 0 0 3px hsl(220 90% 66% / 0.3), 
+                0 0 12px hsl(220 90% 66% / 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 4px hsl(220 90% 66% / 0.4), 
+                0 0 16px hsl(220 90% 66% / 0.6);
+  }
+}

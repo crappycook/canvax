@@ -164,6 +164,69 @@ export function collectUpstreamContext(
   }
 }
 
+/**
+ * Collects upstream context for a branch node using single-path traversal
+ * Follows only the direct parent path from target node to root
+ * Ensures branch isolation by not including messages from sibling branches
+ */
+export function collectUpstreamContextSinglePath(
+  targetNodeId: string,
+  nodes: Node<ChatNodeData>[],
+  edges: Edge[]
+): ExecutionContext {
+  const messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = []
+  const executionOrder: string[] = []
+  const upstreamNodes: Node<ChatNodeData>[] = []
+  let hasErrors = false
+  const errorNodes: string[] = []
+  
+  let currentId: string | null = targetNodeId
+  const visited = new Set<string>() // Circular reference protection
+  
+  // Traverse single path from target to root
+  while (currentId && !visited.has(currentId)) {
+    visited.add(currentId)
+    
+    const node = nodes.find(n => n.id === currentId)
+    
+    if (node) {
+      // Add to execution order (prepend to maintain root-to-target order)
+      executionOrder.unshift(currentId)
+      upstreamNodes.unshift(node)
+      
+      // Check for errors
+      if (node.data.status === 'error') {
+        hasErrors = true
+        errorNodes.push(currentId)
+      }
+      
+      // Collect messages from this node
+      if (node.data.messages && node.data.messages.length > 0) {
+        // Prepend messages to maintain chronological order
+        const nodeMessages = node.data.messages.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+        }))
+        messages.unshift(...nodeMessages)
+      }
+    }
+    
+    // Find direct parent (single path) - only one incoming edge
+    const parentEdge = edges.find(e => e.target === currentId)
+    currentId = parentEdge?.source ?? null
+  }
+  
+  return {
+    nodeId: targetNodeId,
+    upstreamNodes,
+    messages,
+    executionOrder,
+    hasErrors,
+    errorNodes,
+    isComplete: !hasErrors,
+  }
+}
+
 export function validateNoCycle(nodes: string[], edges: Edge[]): boolean {
   const graph = new Map<string, string[]>()
   const visited = new Set<string>()

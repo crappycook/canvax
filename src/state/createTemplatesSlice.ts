@@ -1,6 +1,6 @@
 import { type StateCreator } from 'zustand'
 import { type Node } from '@xyflow/react'
-import { type ChatNodeData } from '@/canvas/types'
+import { type ChatNodeData } from '@/types'
 
 export interface TemplatesSlice {
   templates: Array<{
@@ -29,11 +29,12 @@ export const createTemplatesSlice: StateCreator<TemplatesSlice> = (set, get) => 
         type: 'chat',
         position: { x: 0, y: 0 },
         data: {
-          title: 'Chat',
-          modelId: 'gpt-4o',
+          label: 'Chat',
+          model: 'gpt-4o',
           prompt: 'Hello! How can I help you today?',
           messages: [],
-          status: 'idle'
+          status: 'idle',
+          createdAt: Date.now(),
         }
       }
     },
@@ -47,11 +48,12 @@ export const createTemplatesSlice: StateCreator<TemplatesSlice> = (set, get) => 
         type: 'chat',
         position: { x: 0, y: 0 },
         data: {
-          title: 'Summarize',
-          modelId: 'gpt-4o',
+          label: 'Summarize',
+          model: 'gpt-4o',
           prompt: 'Please summarize the following content:',
           messages: [],
-          status: 'idle'
+          status: 'idle',
+          createdAt: Date.now(),
         }
       }
     }
@@ -85,8 +87,9 @@ export const createTemplatesSlice: StateCreator<TemplatesSlice> = (set, get) => 
       position,
       data: {
         ...template.node.data,
-        title: template.node.data.title,
-        messages: []
+        label: template.node.data.label,
+        messages: [],
+        createdAt: Date.now(),
       }
     }
 

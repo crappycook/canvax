@@ -4,12 +4,15 @@ import {
   type NodeChange,
   applyNodeChanges,
 } from '@xyflow/react'
-import { type ChatNodeData, type ChatMessage } from '@/types'
+import { type ChatNodeData, type ChatMessage, type BranchMetadata, type CustomEdgeData } from '@/types'
 import { type EdgesSlice } from './createEdgesSlice'
+import { calculateBranchNodePositions } from '@/lib/branchLayout'
 
 export interface NodesSlice {
   nodes: Node[]
   selectedNodeId: string | null
+  highlightedNodeIds: Set<string>
+  highlightedEdgeIds: Set<string>
 
   // Node management
   setNodes: (nodes: Node[]) => void
@@ -29,14 +32,27 @@ export interface NodesSlice {
   getDownstreamNodes: (nodeId: string) => Node[]
   getUpstreamNodes: (nodeId: string) => Node[]
 
+  // Branch operations
+  createBranchFromNode: (nodeId: string) => void
+  getBranchMetadata: (nodeId: string) => BranchMetadata | null
+  getBranchPath: (nodeId: string) => Node[]
+  getSiblingBranches: (nodeId: string) => Node[]
+  deleteBranchCascade: (nodeId: string) => void
+
   // Selection
   selectNode: (nodeId: string | null) => void
   getSelectedNode: () => Node | null
+  
+  // Branch highlighting
+  updateBranchHighlight: (nodeId: string | null) => void
+  clearBranchHighlight: () => void
 }
 
 export const createNodesSlice: StateCreator<NodesSlice & EdgesSlice, [], [], NodesSlice> = (set, get) => ({
   nodes: [],
   selectedNodeId: null,
+  highlightedNodeIds: new Set<string>(),
+  highlightedEdgeIds: new Set<string>(),
 
   setNodes: (nodes) => {
     set({ nodes })
@@ -207,13 +223,316 @@ export const createNodesSlice: StateCreator<NodesSlice & EdgesSlice, [], [], Nod
     return state.nodes.filter((node) => upstreamNodeIds.includes(node.id))
   },
 
+  createBranchFromNode: (nodeId) => {
+    const state = get()
+    const sourceNode = state.nodes.find(n => n.id === nodeId)
+    if (!sourceNode) return
+
+    // Calculate branch index from existing edges
+    const existingBranches = state.edges.filter(e => e.source === nodeId)
+    const branchIndex = existingBranches.length
+
+    // Generate unique branch ID
+    const branchId = `${nodeId}-branch-${branchIndex}-${Date.now()}`
+
+    // Calculate positions using layout utility
+    const { inputPosition } = calculateBranchNodePositions(
+      sourceNode.position,
+      branchIndex
+    )
+
+    // Create Input node with branch metadata
+    const inputNodeId = `node-${Date.now()}`
+    const inputNode: Node = {
+      id: inputNodeId,
+      type: 'chat',
+      position: inputPosition,
+      data: {
+        label: `Continue from ${sourceNode.data.label}`,
+        model: (sourceNode.data as ChatNodeData).model,
+        prompt: '',
+        messages: [],
+        status: 'idle' as const,
+        createdAt: Date.now(),
+        nodeType: 'input' as const,
+        branchId,
+        parentNodeId: nodeId,
+        branchIndex,
+      },
+    }
+
+    // Add input node only
+    state.addNode(inputNode)
+
+    // Add edge with branch metadata
+    state.addEdge({
+      id: `edge-${Date.now()}`,
+      source: nodeId,
+      target: inputNodeId,
+      data: {
+        branchIndex,
+        isBranchEdge: true,
+        createdAt: Date.now(),
+      },
+    })
+  },
+
+  getBranchMetadata: (nodeId) => {
+    const state = get()
+    const node = state.nodes.find(n => n.id === nodeId)
+    if (!node) return null
+
+    const nodeData = node.data as ChatNodeData
+    
+    // Check if node has branch metadata
+    if (!nodeData.branchId || !nodeData.parentNodeId) {
+      return null
+    }
+
+    // Calculate branch depth by traversing to root
+    let depth = 0
+    let currentId: string | null = nodeId
+    const visited = new Set<string>()
+
+    while (currentId) {
+      if (visited.has(currentId)) {
+        // Circular reference detected
+        break
+      }
+      visited.add(currentId)
+
+      const parentEdge = state.edges.find(e => e.target === currentId)
+      if (parentEdge) {
+        depth++
+        currentId = parentEdge.source
+      } else {
+        currentId = null
+      }
+    }
+
+    // Count messages in branch path
+    let messageCount = 0
+    currentId = nodeId
+    visited.clear()
+
+    while (currentId) {
+      if (visited.has(currentId)) {
+        break
+      }
+      visited.add(currentId)
+
+      const currentNode = state.nodes.find(n => n.id === currentId)
+      if (currentNode) {
+        const currentData = currentNode.data as ChatNodeData
+        messageCount += currentData.messages?.length || 0
+      }
+
+      const parentEdge = state.edges.find(e => e.target === currentId)
+      currentId = parentEdge?.source ?? null
+    }
+
+    return {
+      branchId: nodeData.branchId,
+      parentNodeId: nodeData.parentNodeId,
+      depth,
+      messageCount,
+      createdAt: nodeData.createdAt,
+    }
+  },
+
+  getBranchPath: (nodeId) => {
+    const state = get()
+    const path: Node[] = []
+    let currentId: string | null = nodeId
+    const visited = new Set<string>()
+
+    // Traverse from current node to root following parent edges
+    while (currentId) {
+      // Circular reference protection
+      if (visited.has(currentId)) {
+        break
+      }
+      visited.add(currentId)
+
+      const currentNode = state.nodes.find(n => n.id === currentId)
+      if (currentNode) {
+        path.unshift(currentNode) // Add to beginning for correct order
+      }
+
+      // Find parent edge
+      const parentEdge = state.edges.find(e => e.target === currentId)
+      currentId = parentEdge?.source ?? null
+    }
+
+    return path
+  },
+
+  getSiblingBranches: (nodeId) => {
+    const state = get()
+    const node = state.nodes.find(n => n.id === nodeId)
+    if (!node) return []
+
+    const nodeData = node.data as ChatNodeData
+    
+    // Find parent node from current node's metadata
+    const parentNodeId = nodeData.parentNodeId
+    if (!parentNodeId) return []
+
+    // Get all edges from parent node
+    const parentEdges = state.edges.filter(e => e.source === parentNodeId)
+
+    // Filter to find sibling branch nodes
+    const siblingNodeIds = parentEdges
+      .map(e => e.target)
+      .filter(targetId => targetId !== nodeId) // Exclude current node
+
+    // Return the actual node objects
+    return state.nodes.filter(n => siblingNodeIds.includes(n.id))
+  },
+
   selectNode: (nodeId) => {
     set({ selectedNodeId: nodeId })
+    // Update branch highlighting when selection changes
+    get().updateBranchHighlight(nodeId)
   },
 
   getSelectedNode: () => {
     const state = get()
     return state.nodes.find((node) => node.id === state.selectedNodeId) || null
+  },
+
+  updateBranchHighlight: (nodeId) => {
+    const state = get()
+    
+    // Clear previous highlights
+    state.clearBranchHighlight()
+    
+    // If no node selected, nothing to highlight
+    if (!nodeId) {
+      return
+    }
+    
+    const node = state.nodes.find(n => n.id === nodeId)
+    if (!node) {
+      return
+    }
+    
+    const nodeData = node.data as ChatNodeData
+    
+    // Only highlight if node is part of a branch
+    if (!nodeData.branchId) {
+      return
+    }
+    
+    // Get all nodes in the branch path
+    const branchPath = state.getBranchPath(nodeId)
+    const highlightedNodeIds = new Set(branchPath.map(n => n.id))
+    
+    // Get all edges in the branch path
+    const highlightedEdgeIds = new Set<string>()
+    for (let i = 0; i < branchPath.length - 1; i++) {
+      const sourceId = branchPath[i].id
+      const targetId = branchPath[i + 1].id
+      
+      // Find the edge connecting these nodes
+      const edge = state.edges.find(e => e.source === sourceId && e.target === targetId)
+      if (edge) {
+        highlightedEdgeIds.add(edge.id)
+      }
+    }
+    
+    set({ 
+      highlightedNodeIds,
+      highlightedEdgeIds
+    })
+  },
+
+  clearBranchHighlight: () => {
+    set({
+      highlightedNodeIds: new Set<string>(),
+      highlightedEdgeIds: new Set<string>()
+    })
+  },
+
+  deleteBranchCascade: (nodeId) => {
+    const state = get()
+    const node = state.nodes.find(n => n.id === nodeId)
+    if (!node) return
+
+    // Find all downstream nodes in branch using BFS
+    const nodesToDelete = new Set<string>([nodeId])
+    const edgesToDelete = new Set<string>()
+    const queue = [nodeId]
+    const visited = new Set<string>()
+
+    while (queue.length > 0) {
+      const currentId = queue.shift()!
+      
+      if (visited.has(currentId)) {
+        continue
+      }
+      visited.add(currentId)
+
+      // Find all edges where this node is the source
+      const downstreamEdges = state.edges.filter(e => e.source === currentId)
+      
+      for (const edge of downstreamEdges) {
+        edgesToDelete.add(edge.id)
+        nodesToDelete.add(edge.target)
+        queue.push(edge.target)
+      }
+    }
+
+    // Capture state before deletion for undo/redo
+    const deletedNodesData = state.nodes
+      .filter(n => nodesToDelete.has(n.id))
+      .map(n => ({
+        id: n.id,
+        type: n.type ?? 'chat',
+        position: n.position,
+        data: n.data as ChatNodeData,
+      }))
+
+    const deletedEdgesData = state.edges
+      .filter(e => edgesToDelete.has(e.id))
+      .map(e => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        data: e.data as CustomEdgeData | undefined,
+      }))
+
+    // Add to history
+    const historyEntry = {
+      type: 'branch_deletion' as const,
+      timestamp: Date.now(),
+      deletedNodes: deletedNodesData,
+      deletedEdges: deletedEdgesData,
+    }
+
+    // Get addHistoryEntry from the store (it's in CanvasSlice)
+    const fullState = get() as unknown as { addHistoryEntry?: (entry: typeof historyEntry) => void }
+    if (fullState.addHistoryEntry) {
+      fullState.addHistoryEntry(historyEntry)
+    }
+
+    // Remove all branch nodes and edges
+    set((state) => ({
+      nodes: state.nodes.filter(n => !nodesToDelete.has(n.id)),
+      selectedNodeId: nodesToDelete.has(state.selectedNodeId ?? '') ? null : state.selectedNodeId
+    }))
+
+    // Remove edges
+    state.edges.forEach(edge => {
+      if (edgesToDelete.has(edge.id)) {
+        state.removeEdge(edge.id)
+      }
+    })
+
+    // Clear highlights if deleted node was highlighted
+    if (nodesToDelete.has(state.selectedNodeId ?? '')) {
+      state.clearBranchHighlight()
+    }
   }
 })
 

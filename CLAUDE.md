@@ -9,6 +9,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm lint` - Run ESLint on all files
 - `pnpm preview` - Preview production build locally
 
+**Testing Commands**:
+- `pnpm test` - Run tests in watch mode (interactive development)
+- `pnpm test:run` - Run all tests once (CI/CD)
+- `pnpm test:ui` - Run tests with interactive UI interface
+- `pnpm test:coverage` - Run tests and generate coverage report
+
 **Package Manager**: This project uses pnpm as the primary package manager
 
 **TypeScript Configuration**: Uses TypeScript 5.8 with strict configuration including:
@@ -88,12 +94,14 @@ The application uses Zustand with a modular slice pattern:
 - Error boundaries and graceful error handling throughout
 
 ### Development Guidelines
-- Follow Cursor rules in `.cursor/rules/` directory
+- Follow Cursor rules in `.cursor/rules/` directory for specialized tasks
 - Use TypeScript with strict typing and comprehensive interfaces
 - Implement accessibility features (ARIA labels, keyboard navigation)
 - Follow mobile-first responsive design
 - Use modern Tailwind CSS syntax (e.g., `size-4` instead of `h-4 w-4`)
 - Maintain separation of concerns between state, UI, and services
+- Test files are co-located with source files using `.test.ts` or `.test.tsx` extensions
+- Use test utilities from `src/test/testUtils.ts` for consistent testing patterns
 
 ### Key Implementation Features
 - **Multi-page routing**: Canvas, Project Hub, and Settings
@@ -103,9 +111,23 @@ The application uses Zustand with a modular slice pattern:
 - **Context-aware AI**: Intelligent context collection from connected nodes
 - **Responsive design**: Mobile-friendly canvas interface
 
+### Testing Framework
+- **Vitest**: Test runner with watch mode and coverage
+- **Testing Libraries**: @testing-library/react and @testing-library/jest-dom
+- **Test Environment**: happy-dom/jsdom for DOM testing
+- **Coverage**: v8 coverage with comprehensive reporting
+- Test utilities and mock data generators in `src/test/`
+
 ### AI/LLM Integration
 - OpenAI API integration with configurable models
 - Support for temperature and max token settings
 - Streaming response support
 - API key management with secure storage
 - Multi-model support (GPT-4, GPT-3.5, etc.)
+
+### Cursor Rules Integration
+- **typescript-pro**: Advanced typing and TypeScript architecture
+- **frontend-developer**: React components and responsive design (proactively applied)
+- **shadcn-ui-expert**: shadcn/ui component expertise
+- **ui-ux-designer**: Interface design and user experience
+- **prd-writer**: Product requirements documentation

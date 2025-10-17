@@ -6,9 +6,10 @@ import type { ChatNodeData, NodeType } from '@/canvas/types'
  * Determines the type of a node based on its data and connections
  * 
  * Logic:
- * - Input Node: No downstream connections AND no assistant messages
- * - Response Node: Has upstream connection AND has assistant messages AND prompt is empty
- * - Hybrid Node: All other cases (has connections and both messages and prompt)
+ * - If nodeType is explicitly set in data, use that (for branch nodes)
+ * - Response Node: Has assistant messages AND prompt is empty (pure response display)
+ * - Input Node: No assistant messages (fresh input node)
+ * - Hybrid Node: Has assistant messages AND has prompt (continuing conversation)
  * 
  * @param nodeId - The ID of the node to check
  * @param nodeData - The data of the node
@@ -16,27 +17,34 @@ import type { ChatNodeData, NodeType } from '@/canvas/types'
  * @returns The node type: 'input', 'response', or 'hybrid'
  */
 export function getNodeType(
-  nodeId: string,
+  _nodeId: string,
   nodeData: ChatNodeData,
-  edges: Edge[]
+  _edges: Edge[]
 ): NodeType {
-  const hasDownstream = edges.some(e => e.source === nodeId)
-  const hasUpstream = edges.some(e => e.target === nodeId)
-  const hasPrompt = nodeData.prompt.trim().length > 0
-  const hasAssistantMessages = nodeData.messages.some(m => m.role === 'assistant')
-  
-  // Input node: no downstream connections and no assistant messages
-  if (!hasDownstream && !hasAssistantMessages) {
-    return 'input'
+  // If nodeType is explicitly set (e.g., for branch nodes), respect it
+  if (nodeData.nodeType) {
+    return nodeData.nodeType
   }
   
-  // Response node: has upstream, has assistant messages, no prompt
-  if (hasUpstream && hasAssistantMessages && !hasPrompt) {
+  // Safely check for prompt and messages (handle undefined/null cases for legacy data)
+  const prompt = nodeData.prompt ?? ''
+  const messages = nodeData.messages ?? []
+  
+  const hasPrompt = prompt.trim().length > 0
+  const hasAssistantMessages = messages.some(m => m.role === 'assistant')
+  
+  // Response node: has assistant messages but no prompt (pure response display)
+  if (hasAssistantMessages && !hasPrompt) {
     return 'response'
   }
   
-  // Hybrid node: all other cases
-  return 'hybrid'
+  // Hybrid node: has both assistant messages and prompt (continuing conversation)
+  if (hasAssistantMessages && hasPrompt) {
+    return 'hybrid'
+  }
+  
+  // Input node: no assistant messages (fresh input node)
+  return 'input'
 }
 
 /**
@@ -104,10 +112,11 @@ export function useNodeType(
     () => getNodeType(nodeId, nodeData, edges),
     [
       nodeId,
+      nodeData.nodeType,
       nodeData.prompt,
-      nodeData.messages.length,
+      nodeData.messages?.length ?? 0,
       // Check if there are assistant messages
-      nodeData.messages.some(m => m.role === 'assistant'),
+      nodeData.messages?.some(m => m.role === 'assistant') ?? false,
       // Serialize edges to detect changes
       edges.filter(e => e.source === nodeId || e.target === nodeId).length
     ]
