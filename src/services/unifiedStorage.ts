@@ -1,169 +1,90 @@
-import { IndexedDBStorage } from './storage'
-import { FileSystemStorage } from './fileSystemStorage'
-import type { StorageService, AppSettings, Template } from '@/types/storage'
+import { StorageManager } from './storageAdapter'
+import { IndexedDBAdapter } from './adapters/indexedDBAdapter'
+import { MemoryAdapter } from './adapters/memoryAdapter'
 import type { ProjectSnapshot } from '@/canvas/types'
+import type { AppSettings, Template, ProjectMetadata } from '@/types/storage'
 
-export class UnifiedStorageService implements StorageService {
-  private preferredStorage: 'indexedDB' | 'fileSystem' = 'indexedDB'
-  private indexedDBStorage: IndexedDBStorage
-  private fileSystemStorage: FileSystemStorage
+/**
+ * Unified Storage Service
+ * 
+ * Provides a single interface for all storage operations.
+ * Automatically selects the best available storage backend.
+ */
+class UnifiedStorageService {
+  private manager: StorageManager
+  private initialized = false
 
   constructor() {
-    this.indexedDBStorage = new IndexedDBStorage()
-    this.fileSystemStorage = new FileSystemStorage()
-    this.detectStorageCapability()
+    // Initialize with fallback chain: IndexedDB -> Memory
+    // Future: Add SQLite and Remote adapters
+    this.manager = new StorageManager([
+      new IndexedDBAdapter(),
+      new MemoryAdapter(),
+    ])
   }
 
-  private async detectStorageCapability(): Promise<void> {
-    try {
-      await this.indexedDBStorage.testConnection()
-      this.preferredStorage = 'indexedDB'
-    } catch {
-      this.preferredStorage = 'fileSystem'
-    }
-  }
-
-  async testConnection(): Promise<void> {
-    if (this.preferredStorage === 'indexedDB') {
-      try {
-        await this.indexedDBStorage.testConnection()
-      } catch {
-        this.preferredStorage = 'fileSystem'
-        await this.fileSystemStorage.testConnection()
-      }
-    } else {
-      await this.fileSystemStorage.testConnection()
+  private async ensureInitialized(): Promise<void> {
+    if (!this.initialized) {
+      await this.manager.initialize()
+      this.initialized = true
     }
   }
 
   async saveProject(projectId: string, data: ProjectSnapshot): Promise<void> {
-    if (this.preferredStorage === 'indexedDB') {
-      try {
-        await this.indexedDBStorage.saveProject(projectId, data)
-      } catch (error) {
-        console.warn('IndexedDB failed, falling back to File System:', error)
-        this.preferredStorage = 'fileSystem'
-        await this.fileSystemStorage.saveProject(projectId, data)
-      }
-    } else {
-      await this.fileSystemStorage.saveProject(projectId, data)
-    }
+    await this.ensureInitialized()
+    return this.manager.saveProject(projectId, data)
   }
 
   async loadProject(projectId: string): Promise<ProjectSnapshot | null> {
-    if (this.preferredStorage === 'indexedDB') {
-      try {
-        return await this.indexedDBStorage.loadProject(projectId)
-      } catch (error) {
-        console.warn('IndexedDB failed, falling back to File System:', error)
-        this.preferredStorage = 'fileSystem'
-        return await this.fileSystemStorage.loadProject(projectId)
-      }
-    } else {
-      return await this.fileSystemStorage.loadProject(projectId)
-    }
+    await this.ensureInitialized()
+    return this.manager.loadProject(projectId)
   }
 
   async deleteProject(projectId: string): Promise<void> {
-    if (this.preferredStorage === 'indexedDB') {
-      try {
-        await this.indexedDBStorage.deleteProject(projectId)
-      } catch (error) {
-        console.warn('IndexedDB failed, falling back to File System:', error)
-        this.preferredStorage = 'fileSystem'
-        await this.fileSystemStorage.deleteProject(projectId)
-      }
-    } else {
-      await this.fileSystemStorage.deleteProject(projectId)
-    }
+    await this.ensureInitialized()
+    return this.manager.deleteProject(projectId)
   }
 
-  async listProjects(): Promise<Array<{ id: string; title: string; updatedAt: number }>> {
-    if (this.preferredStorage === 'indexedDB') {
-      try {
-        return await this.indexedDBStorage.listProjects()
-      } catch (error) {
-        console.warn('IndexedDB failed, falling back to File System:', error)
-        this.preferredStorage = 'fileSystem'
-        return await this.fileSystemStorage.listProjects()
-      }
-    } else {
-      return await this.fileSystemStorage.listProjects()
-    }
+  async listProjects(): Promise<ProjectMetadata[]> {
+    await this.ensureInitialized()
+    return this.manager.listProjects()
   }
 
   async saveTemplate(templateId: string, data: Template): Promise<void> {
-    if (this.preferredStorage === 'indexedDB') {
-      try {
-        await this.indexedDBStorage.saveTemplate(templateId, data)
-      } catch (error) {
-        console.warn('IndexedDB failed, falling back to File System:', error)
-        this.preferredStorage = 'fileSystem'
-        await this.fileSystemStorage.saveTemplate(templateId, data)
-      }
-    } else {
-      await this.fileSystemStorage.saveTemplate(templateId, data)
-    }
+    await this.ensureInitialized()
+    return this.manager.saveTemplate(templateId, data)
   }
 
   async loadTemplate(templateId: string): Promise<Template | null> {
-    if (this.preferredStorage === 'indexedDB') {
-      try {
-        return await this.indexedDBStorage.loadTemplate(templateId)
-      } catch (error) {
-        console.warn('IndexedDB failed, falling back to File System:', error)
-        this.preferredStorage = 'fileSystem'
-        return await this.fileSystemStorage.loadTemplate(templateId)
-      }
-    } else {
-      return await this.fileSystemStorage.loadTemplate(templateId)
-    }
+    await this.ensureInitialized()
+    return this.manager.loadTemplate(templateId)
   }
 
   async listTemplates(): Promise<string[]> {
-    if (this.preferredStorage === 'indexedDB') {
-      try {
-        return await this.indexedDBStorage.listTemplates()
-      } catch (error) {
-        console.warn('IndexedDB failed, falling back to File System:', error)
-        this.preferredStorage = 'fileSystem'
-        return await this.fileSystemStorage.listTemplates()
-      }
-    } else {
-      return await this.fileSystemStorage.listTemplates()
-    }
+    await this.ensureInitialized()
+    return this.manager.listTemplates()
   }
 
   async saveSettings(settings: AppSettings): Promise<void> {
-    if (this.preferredStorage === 'indexedDB') {
-      try {
-        await this.indexedDBStorage.saveSettings(settings)
-      } catch (error) {
-        console.warn('IndexedDB failed, falling back to File System:', error)
-        this.preferredStorage = 'fileSystem'
-        await this.fileSystemStorage.saveSettings(settings)
-      }
-    } else {
-      await this.fileSystemStorage.saveSettings(settings)
-    }
+    await this.ensureInitialized()
+    return this.manager.saveSettings(settings)
   }
 
   async loadSettings(): Promise<AppSettings | null> {
-    if (this.preferredStorage === 'indexedDB') {
-      try {
-        return await this.indexedDBStorage.loadSettings()
-      } catch (error) {
-        console.warn('IndexedDB failed, falling back to File System:', error)
-        this.preferredStorage = 'fileSystem'
-        return await this.fileSystemStorage.loadSettings()
-      }
-    } else {
-      return await this.fileSystemStorage.loadSettings()
-    }
+    await this.ensureInitialized()
+    return this.manager.loadSettings()
   }
 
-  getStorageType(): 'indexedDB' | 'fileSystem' {
-    return this.preferredStorage
+  getStorageInfo() {
+    return this.manager.getStorageInfo()
+  }
+
+  getStorageType(): 'indexeddb' | 'sqlite' | 'remote' | 'memory' | 'indexedDB' | 'fileSystem' {
+    const info = this.manager.getStorageInfo()
+    // Map new types to legacy types for backward compatibility
+    if (info.type === 'indexeddb') return 'indexedDB'
+    if (info.type === 'memory') return 'fileSystem'
+    return info.type
   }
 
   async exportProject(projectId: string): Promise<void> {
@@ -171,12 +92,12 @@ export class UnifiedStorageService implements StorageService {
     if (!project) {
       throw new Error(`Project ${projectId} not found`)
     }
-    
+
     const dataStr = JSON.stringify(project, null, 2)
     const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(dataStr)}`
-    
+
     const exportFileDefaultName = `${project.metadata.title.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.canvax`
-    
+
     const linkElement = document.createElement('a')
     linkElement.setAttribute('href', dataUri)
     linkElement.setAttribute('download', exportFileDefaultName)

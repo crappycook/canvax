@@ -10,10 +10,10 @@ export default function CanvasPage() {
   const navigate = useNavigate()
   const hydrateProject = useStore(state => state.hydrateProject)
   const currentProjectId = useStore(state => state.currentProjectId)
+  const nodes = useStore(state => state.nodes)
 
   useEffect(() => {
     if (!projectId) return
-    if (currentProjectId === projectId) return
 
     let cancelled = false
 
@@ -23,7 +23,14 @@ export default function CanvasPage() {
         if (cancelled) return
 
         if (snapshot) {
-          hydrateProject(snapshot)
+          // Hydrate if:
+          // 1. Project ID changed, OR
+          // 2. Current project ID matches but nodes are empty (page refresh case)
+          const shouldHydrate = currentProjectId !== projectId || !nodes || nodes.length === 0
+
+          if (shouldHydrate) {
+            hydrateProject(snapshot)
+          }
         } else {
           navigate('/', { replace: true })
         }
@@ -38,7 +45,7 @@ export default function CanvasPage() {
     return () => {
       cancelled = true
     }
-  }, [projectId, currentProjectId, hydrateProject, navigate])
+  }, [projectId, currentProjectId, nodes, hydrateProject, navigate])
 
   return (
     <div className="flex h-screen flex-col">

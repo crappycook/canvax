@@ -42,7 +42,7 @@ export interface NodesSlice {
   // Selection
   selectNode: (nodeId: string | null) => void
   getSelectedNode: () => Node | null
-  
+
   // Branch highlighting
   updateBranchHighlight: (nodeId: string | null) => void
   clearBranchHighlight: () => void
@@ -228,12 +228,24 @@ export const createNodesSlice: StateCreator<NodesSlice & EdgesSlice, [], [], Nod
     const sourceNode = state.nodes.find(n => n.id === nodeId)
     if (!sourceNode) return
 
-    // Calculate branch index from existing edges
-    const existingBranches = state.edges.filter(e => e.source === nodeId)
-    const branchIndex = existingBranches.length
+    const sourceNodeData = sourceNode.data as ChatNodeData
 
-    // Generate unique branch ID
-    const branchId = `${nodeId}-branch-${branchIndex}-${Date.now()}`
+    // Determine branch index:
+    // - If source node already has a branchIndex, inherit it (continuing same branch)
+    // - Otherwise, calculate new branch index from existing branches
+    let branchIndex: number
+    let branchId: string
+
+    if (sourceNodeData.branchIndex !== undefined && sourceNodeData.branchId) {
+      // Inherit branch index from parent (continuing in same branch)
+      branchIndex = sourceNodeData.branchIndex
+      branchId = sourceNodeData.branchId
+    } else {
+      // Creating a new branch from main trunk
+      const existingBranches = state.edges.filter(e => e.source === nodeId)
+      branchIndex = existingBranches.length
+      branchId = `${nodeId}-branch-${branchIndex}-${Date.now()}`
+    }
 
     // Calculate positions using layout utility
     const { inputPosition } = calculateBranchNodePositions(
@@ -283,7 +295,7 @@ export const createNodesSlice: StateCreator<NodesSlice & EdgesSlice, [], [], Nod
     if (!node) return null
 
     const nodeData = node.data as ChatNodeData
-    
+
     // Check if node has branch metadata
     if (!nodeData.branchId || !nodeData.parentNodeId) {
       return null
@@ -373,7 +385,7 @@ export const createNodesSlice: StateCreator<NodesSlice & EdgesSlice, [], [], Nod
     if (!node) return []
 
     const nodeData = node.data as ChatNodeData
-    
+
     // Find parent node from current node's metadata
     const parentNodeId = nodeData.parentNodeId
     if (!parentNodeId) return []
@@ -403,45 +415,45 @@ export const createNodesSlice: StateCreator<NodesSlice & EdgesSlice, [], [], Nod
 
   updateBranchHighlight: (nodeId) => {
     const state = get()
-    
+
     // Clear previous highlights
     state.clearBranchHighlight()
-    
+
     // If no node selected, nothing to highlight
     if (!nodeId) {
       return
     }
-    
+
     const node = state.nodes.find(n => n.id === nodeId)
     if (!node) {
       return
     }
-    
+
     const nodeData = node.data as ChatNodeData
-    
+
     // Only highlight if node is part of a branch
     if (!nodeData.branchId) {
       return
     }
-    
+
     // Get all nodes in the branch path
     const branchPath = state.getBranchPath(nodeId)
     const highlightedNodeIds = new Set(branchPath.map(n => n.id))
-    
+
     // Get all edges in the branch path
     const highlightedEdgeIds = new Set<string>()
     for (let i = 0; i < branchPath.length - 1; i++) {
       const sourceId = branchPath[i].id
       const targetId = branchPath[i + 1].id
-      
+
       // Find the edge connecting these nodes
       const edge = state.edges.find(e => e.source === sourceId && e.target === targetId)
       if (edge) {
         highlightedEdgeIds.add(edge.id)
       }
     }
-    
-    set({ 
+
+    set({
       highlightedNodeIds,
       highlightedEdgeIds
     })
@@ -467,7 +479,7 @@ export const createNodesSlice: StateCreator<NodesSlice & EdgesSlice, [], [], Nod
 
     while (queue.length > 0) {
       const currentId = queue.shift()!
-      
+
       if (visited.has(currentId)) {
         continue
       }
@@ -475,7 +487,7 @@ export const createNodesSlice: StateCreator<NodesSlice & EdgesSlice, [], [], Nod
 
       // Find all edges where this node is the source
       const downstreamEdges = state.edges.filter(e => e.source === currentId)
-      
+
       for (const edge of downstreamEdges) {
         edgesToDelete.add(edge.id)
         nodesToDelete.add(edge.target)

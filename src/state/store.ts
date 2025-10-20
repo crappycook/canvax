@@ -37,7 +37,6 @@ export const useStore = create<RootState>()(
         name: 'canvas-app',
         partialize: s => ({ 
           currentProjectId: s.currentProjectId, 
-          snapshot: s.snapshot,
           settings: s.settings
         }),
       }

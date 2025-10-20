@@ -45,7 +45,7 @@ interface ReactFlowCanvasProps {
   projectId?: string
 }
 
-export default function ReactFlowCanvas({ projectId: _projectId }: ReactFlowCanvasProps) { // eslint-disable-line @typescript-eslint/no-unused-vars
+export default function ReactFlowCanvas({ projectId }: ReactFlowCanvasProps) {
   const nodes = useStore(state => state.nodes)
   const edges = useStore(state => state.edges)
   const setNodes = useStore(state => state.setNodes)
@@ -57,18 +57,26 @@ export default function ReactFlowCanvas({ projectId: _projectId }: ReactFlowCanv
   const deleteBranchCascade = useStore(state => state.deleteBranchCascade)
   const selectedNodeId = useStore(state => state.selectedNodeId)
   const selectNode = useStore(state => state.selectNode)
+  const currentProjectId = useStore(state => state.currentProjectId)
 
   // State for delete confirmation dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [pendingDeleteNodes, setPendingDeleteNodes] = useState<Node[]>([])
   const [branchCount, setBranchCount] = useState(0)
+  const [isInitialized, setIsInitialized] = useState(false)
 
+  // Only set default nodes for NEW projects (no projectId in URL)
+  // For existing projects, wait for data to load from storage
   useEffect(() => {
-    if (nodes.length === 0 && edges.length === 0) {
+    if (!projectId && !isInitialized && nodes.length === 0 && edges.length === 0) {
       setNodes(DEFAULT_NODES)
       setEdges(DEFAULT_EDGES)
+      setIsInitialized(true)
+    } else if (projectId && currentProjectId === projectId && nodes.length > 0) {
+      // Mark as initialized once we have loaded data for an existing project
+      setIsInitialized(true)
     }
-  }, [nodes.length, edges.length, setNodes, setEdges])
+  }, [projectId, currentProjectId, nodes.length, edges.length, setNodes, setEdges, isInitialized])
 
   const toastMessage = useStore(state => state.ui.toastMessage)
   const showToast = useStore(state => state.showToast)

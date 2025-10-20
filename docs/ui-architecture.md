@@ -288,18 +288,218 @@ export interface ProjectSnapshot {
 
 ```text
 src/services/
-  llmClient.ts       // OpenAI 兼容封装（超时/中断/错误分类）
-  storage.ts         // IndexedDB + 文件导入导出
-  crypto.ts          // WebCrypto API Key 加密/解密
-  export.ts          // PNG/Markdown/JSON 导出
+  llmClient.ts              // OpenAI 兼容封装（超时/中断/错误分类）
+  storageAdapter.ts         // 存储适配器接口与管理器
+  unifiedStorage.ts         // 统一存储服务（单例）
+  crypto.ts                 // WebCrypto API Key 加密/解密
+  export.ts                 // PNG/Markdown/JSON 导出
+  adapters/
+    indexedDBAdapter.ts     // IndexedDB 实现（当前方案）
+    memoryAdapter.ts        // 内存存储（开发/降级）
+    sqliteAdapter.ts        // SQLite 实现（未来本地数据库）
+    remoteAdapter.ts        // 远程 API 实现（未来服务端存储）
 
 src/hooks/
-  useRunNode.ts          // 将节点数据 -> 请求参数；写回 messages/status
-  useHotkeys.ts          // 快捷键集中处理
-  useExecutionManager.ts // 调度并发运行 + 取消
+  useRunNode.ts             // 将节点数据 -> 请求参数；写回 messages/status
+  useHotkeys.ts             // 快捷键集中处理
+  useExecutionManager.ts    // 调度并发运行 + 取消
 
 src/lib/
-  graph.ts               // collectUpstreamContext、拓扑排序、graph utils
+  graph.ts                  // collectUpstreamContext、拓扑排序、graph utils
+```
+
+#### 数据持久化架构设计
+
+**设计原则**：
+- 抽象存储层，支持多种后端无缝切换
+- 自动降级策略，确保应用始终可用
+- 统一接口，业务代码无需关心底层实现
+
+**存储适配器接口**：
+
+```ts
+interface StorageAdapter {
+  // 生命周期
+  initialize(): Promise<void>
+  testConnection(): Promise<void>
+  close?(): Promise<void>
+
+  // 项目操作
+  saveProject(projectId: string, data: ProjectSnapshot): Promise<void>
+  loadProject(projectId: string): Promise<ProjectSnapshot | null>
+  deleteProject(projectId: string): Promise<void>
+  listProjects(): Promise<ProjectMetadata[]>
+
+  // 模板操作
+  saveTemplate(templateId: string, data: Template): Promise<void>
+  loadTemplate(templateId: string): Promise<Template | null>
+  deleteTemplate(templateId: string): Promise<void>
+  listTemplates(): Promise<string[]>
+
+  // 设置
+  saveSettings(settings: AppSettings): Promise<void>
+  loadSettings(): Promise<AppSettings | null>
+
+  // 元数据
+  getStorageInfo(): StorageInfo
+}
+```
+
+**存储管理器（StorageManager）**：
+
+负责管理多个适配器并实现自动降级：
+
+```ts
+class StorageManager {
+  private adapters: StorageAdapter[]
+  private activeAdapter: StorageAdapter | null
+
+  async initialize() {
+    // 按优先级尝试初始化适配器
+    for (const adapter of this.adapters) {
+      try {
+        await adapter.initialize()
+        await adapter.testConnection()
+        this.activeAdapter = adapter
+        return
+      } catch (error) {
+        console.warn(`Failed to initialize ${adapter.type}:`, error)
+      }
+    }
+    throw new Error('No storage adapter available')
+  }
+
+  // 统一的 CRUD 接口
+  async saveProject(id: string, data: ProjectSnapshot) {
+    return this.activeAdapter.saveProject(id, data)
+  }
+  // ... 其他方法
+}
+```
+
+**适配器实现**：
+
+1. **IndexedDBAdapter**（当前方案）
+   - 浏览器本地存储
+   - 支持离线使用
+   - 容量限制：通常 50MB-1GB
+   - 适用场景：MVP 阶段、离线优先应用
+
+2. **SQLiteAdapter**（未来本地数据库）
+   - 基于 WASM 的 SQLite（如 sql.js 或 wa-sqlite）
+   - 更强大的查询能力
+   - 更大的存储容量
+   - 适用场景：本地优先、需要复杂查询
+
+3. **RemoteAdapter**（未来服务端存储）
+   - RESTful API 通信
+   - 支持多设备同步
+   - 无容量限制
+   - 适用场景：云端协作、跨设备访问
+
+4. **MemoryAdapter**（降级方案）
+   - 纯内存存储
+   - 页面刷新后数据丢失
+   - 适用场景：所有持久化方案失败时的最后降级
+
+**降级策略**：
+
+```text
+优先级链：
+1. RemoteAdapter（未来）→ 服务端存储
+2. SQLiteAdapter（未来）→ 本地 SQLite
+3. IndexedDBAdapter（当前）→ 浏览器 IndexedDB
+4. MemoryAdapter（降级）→ 内存存储
+```
+
+应用启动时按优先级尝试初始化，第一个成功的适配器成为活跃适配器。
+
+**统一存储服务（UnifiedStorageService）**：
+
+```ts
+class UnifiedStorageService {
+  private manager: StorageManager
+
+  constructor() {
+    this.manager = new StorageManager([
+      // new RemoteAdapter(API_URL),  // 未来启用
+      // new SQLiteAdapter(),          // 未来启用
+      new IndexedDBAdapter(),
+      new MemoryAdapter(),
+    ])
+  }
+
+  async saveProject(id: string, data: ProjectSnapshot) {
+    await this.manager.saveProject(id, data)
+  }
+  // ... 其他方法
+}
+
+export const unifiedStorageService = new UnifiedStorageService()
+```
+
+**迁移路径**：
+
+- **阶段 1（当前）**：IndexedDB + Memory 降级
+- **阶段 2**：添加 SQLite 支持，提供更强大的本地存储
+- **阶段 3**：添加 Remote 支持，实现云端同步
+- **阶段 4**：实现混合模式（本地缓存 + 远程同步）
+
+**数据同步策略（未来）**：
+
+当同时支持本地和远程存储时：
+- 写操作：先写本地，后台异步同步到远程
+- 读操作：优先读本地缓存，定期从远程拉取更新
+- 冲突解决：基于时间戳的最后写入胜出（LWW）或版本向量
+
+**状态管理与持久化分离**：
+
+- **Zustand Store**：仅持久化 `currentProjectId` 和 `settings`
+- **Storage Service**：负责完整项目数据（nodes、edges、viewport 等）
+- **加载流程**：
+  1. 应用启动 → Zustand 从 localStorage 恢复 `currentProjectId`
+  2. CanvasPage 挂载 → 从 Storage Service 加载完整项目数据
+  3. 调用 `hydrateProject()` → 将数据注入 Zustand Store
+- **保存流程**：
+  1. 用户操作 → 更新 Zustand Store
+  2. 触发保存 → 调用 `deriveSnapshot()` 生成快照
+  3. 写入 Storage Service → 持久化到活跃适配器
+
+这种分离确保：
+- 热重载时不会丢失数据（从 Storage Service 重新加载）
+- 状态管理轻量化（localStorage 只存最小必要信息）
+- 存储后端可灵活切换（不影响状态管理逻辑）
+
+**如何添加新的存储后端**：
+
+1. 实现 `StorageAdapter` 接口：
+```ts
+// src/services/adapters/myAdapter.ts
+export class MyAdapter implements StorageAdapter {
+  async initialize() { /* ... */ }
+  async saveProject(id, data) { /* ... */ }
+  // ... 实现所有接口方法
+}
+```
+
+2. 在 `UnifiedStorageService` 中注册：
+```ts
+// src/services/unifiedStorage.ts
+this.manager = new StorageManager([
+  new MyAdapter(),           // 最高优先级
+  new IndexedDBAdapter(),
+  new MemoryAdapter(),       // 降级方案
+])
+```
+
+3. 无需修改业务代码，存储层自动切换到新后端
+
+**开发调试**：
+
+查看当前使用的存储后端：
+```ts
+const storageInfo = unifiedStorageService.getStorageInfo()
+console.log(`Current storage: ${storageInfo.type}`)
 ```
 
 示例：

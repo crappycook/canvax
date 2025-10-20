@@ -93,7 +93,7 @@ describe('ProjectSlice', () => {
 
     test('generates unique project ID when none exists', () => {
       const snapshot1 = store.getState().deriveSnapshot()
-      
+
       // Create new store for second snapshot
       const store2 = createTestStore()
       const snapshot2 = store2.getState().deriveSnapshot()
@@ -105,7 +105,7 @@ describe('ProjectSlice', () => {
 
     test('updates timestamp on each call', () => {
       const snapshot1 = store.getState().deriveSnapshot()
-      
+
       // Wait a bit to ensure different timestamp
       const snapshot2 = store.getState().deriveSnapshot()
 
@@ -669,7 +669,7 @@ describe('ProjectSlice', () => {
       store.getState().hydrateProject(jsonData)
 
       const state = store.getState()
-      
+
       // Verify branch node was imported correctly
       const importedBranchNode = state.nodes.find(n => n.id === 'branch-1')
       expect(importedBranchNode).toBeDefined()

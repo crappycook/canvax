@@ -13,7 +13,7 @@ export default function ProjectHubPage() {
   const hydrateProject = useStore(state => state.hydrateProject)
   const [projects, setProjects] = useState<ProjectMetadata[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [storageType, setStorageType] = useState<'indexedDB' | 'fileSystem'>('indexedDB')
+  const [storageType, setStorageType] = useState<string>('indexedDB')
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const loadProjects = useCallback(async () => {
@@ -125,7 +125,7 @@ export default function ProjectHubPage() {
             Create and manage your AI workflow projects
           </p>
           <div className="mt-1 text-xs text-muted-foreground">
-            Storage: {storageType === 'indexedDB' ? 'IndexedDB' : 'File System'}
+            Storage: {storageType === 'indexedDB' ? 'IndexedDB' : storageType === 'memory' ? 'Memory' : storageType}
           </div>
           {loadError && (
             <p className="mt-1 text-xs text-destructive">
