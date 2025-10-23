@@ -1,3 +1,21 @@
+/**
+ * Custom Provider Dialog Component
+ * 
+ * This component provides a dialog interface for adding and editing custom LLM providers.
+ * It supports OpenAI-compatible APIs and includes features like:
+ * - Form validation for all fields
+ * - Connection testing before saving
+ * - Model management (add/remove models)
+ * - Security warnings for API key storage
+ * - Visual feedback for validation errors
+ * 
+ * The dialog can be used in two modes:
+ * - Add mode: When no provider prop is passed
+ * - Edit mode: When a provider prop is passed (pre-fills form)
+ * 
+ * @component
+ */
+
 import { useState, useEffect } from "react"
 import { X, Plus, Loader2, CheckCircle2, XCircle, AlertTriangle, ShieldAlert, HelpCircle, Server, Key, Link2, Layers, Eye, EyeOff } from "lucide-react"
 import {
@@ -27,26 +45,49 @@ import {
 } from "@/components/ui/tooltip"
 import type { CustomProviderConfig, CustomModelConfig } from "@/services/llm/types"
 
+/**
+ * Props for the CustomProviderDialog component
+ */
 interface CustomProviderDialogProps {
+  /** Whether the dialog is open */
   open: boolean
+  /** Callback when dialog should close */
   onClose: () => void
+  /** Provider to edit (if undefined, dialog is in add mode) */
   provider?: CustomProviderConfig
+  /** Callback when provider is saved (receives config without id and timestamps) */
   onSave: (config: Omit<CustomProviderConfig, 'id' | 'createdAt' | 'updatedAt'>) => void
+  /** List of existing provider names for uniqueness validation */
   existingProviderNames?: string[]
 }
 
+/**
+ * Form data structure for the custom provider dialog
+ */
 interface FormData {
+  /** Provider display name */
   name: string
+  /** API format type (determines request/response format) */
   apiType: 'OpenAI' | 'Anthropic' | 'Google' | 'Custom'
+  /** API key for authentication */
   apiKey: string
+  /** Base URL for the API endpoint */
   baseUrl: string
+  /** List of models available from this provider */
   models: CustomModelConfig[]
+  /** Whether the provider is enabled */
   enabled: boolean
 }
 
+/**
+ * Form validation errors
+ */
 interface FormErrors {
+  /** Error message for name field */
   name?: string
+  /** Error message for API key field */
   apiKey?: string
+  /** Error message for base URL field */
   baseUrl?: string
   models?: string
 }

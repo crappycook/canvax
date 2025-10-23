@@ -1,23 +1,59 @@
+/**
+ * LLM Provider Configuration Module
+ * 
+ * This module manages both predefined providers (from llmProviders.json) and custom user-defined providers.
+ * It provides functions to get enabled providers, find providers and models, and refresh the provider registry.
+ * 
+ * Key concepts:
+ * - Predefined providers: Built-in providers like OpenAI, Anthropic, configured in llmProviders.json
+ * - Custom providers: User-defined providers with OpenAI-compatible APIs
+ * - Enabled providers: Only enabled providers appear in model selectors and can be used in chat nodes
+ * 
+ * @module config/llmProviders
+ */
+
 import rawProviders from './llmProviders.json' with { type: 'json' }
 
+/**
+ * Model definition with ID and display label
+ */
 export interface LLMModelDefinition {
+  /** Unique identifier for the model (e.g., "gpt-4", "claude-3-opus") */
   id: string
+  /** Human-readable display name for the model */
   label: string
 }
 
+/**
+ * Provider definition with models and configuration
+ */
 export interface LLMProviderDefinition {
+  /** Unique identifier for the provider (e.g., "openai", "anthropic") */
   id: string
+  /** Human-readable display name for the provider */
   name: string
+  /** Whether this provider requires an API key for authentication */
   requiresApiKey?: boolean
+  /** Whether this provider is enabled (only enabled providers are available) */
   enabled?: boolean
+  /** Whether this is a custom user-defined provider */
   isCustom?: boolean
+  /** Base URL for custom providers (e.g., "http://localhost:11434/v1") */
   baseUrl?: string
+  /** List of models available from this provider */
   models: LLMModelDefinition[]
 }
 
+/**
+ * Flattened model definition with provider information
+ * Used in model selectors to show which provider each model belongs to
+ */
 export interface FlattenedModelDefinition extends LLMModelDefinition {
+  /** ID of the provider this model belongs to */
   providerId: string
+  /** Display name of the provider this model belongs to */
   providerName: string
+  /** Whether this model is from a custom provider */
   isCustom?: boolean
 }
 

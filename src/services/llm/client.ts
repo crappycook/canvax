@@ -1,3 +1,23 @@
+/**
+ * LLM Client Module
+ * 
+ * This module provides the main interface for interacting with LLM providers.
+ * It manages provider registration, API key storage, and request routing.
+ * 
+ * Key responsibilities:
+ * - Register and manage enabled providers (both predefined and custom)
+ * - Route requests to appropriate provider adapters
+ * - Manage API keys and authentication
+ * - Handle provider refresh when settings change
+ * - Provide backward-compatible API for existing code
+ * 
+ * The client automatically subscribes to settings changes and refreshes
+ * the provider registry when providers are enabled/disabled or custom
+ * providers are added/removed.
+ * 
+ * @module services/llm/client
+ */
+
 import { getEnabledProviders, type LLMProviderDefinition } from '@/config/llmProviders'
 import type {
   LLMProviderAdapter,
@@ -14,8 +34,23 @@ import { useStore } from '@/state/store'
 export type LLMProvider = LLMProviderDefinition
 
 /**
- * LLM Client orchestrates provider adapters and manages API keys
- * Maintains backward compatibility with existing interface
+ * LLM Client orchestrates provider adapters and manages API keys.
+ * 
+ * This is the main entry point for making LLM API calls. It:
+ * - Loads enabled providers from configuration
+ * - Creates appropriate adapters for each provider
+ * - Routes requests to the correct provider based on model ID
+ * - Manages API keys and authentication
+ * - Automatically refreshes when provider settings change
+ * 
+ * Usage:
+ * ```typescript
+ * const client = new LLMClient()
+ * const response = await client.generate({
+ *   model: 'gpt-4',
+ *   messages: [{ role: 'user', content: 'Hello' }]
+ * })
+ * ```
  */
 export class LLMClient {
   // Provider configuration registry (from llmProviders.json)

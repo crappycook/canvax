@@ -226,7 +226,7 @@
   - Test persistence across page reloads
   - _Requirements: All requirements_
 
-- [ ] 19. Documentation and polish
+- [x] 19. Documentation and polish
   - Add JSDoc comments to provider types and methods
   - Document provider configuration format
   - Add user guide for configuring providers in Project Hub
