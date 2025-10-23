@@ -1,20 +1,33 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/state/store'
 import { unifiedStorageService } from '@/services/unifiedStorage'
 import type { ProjectMetadata } from '@/types/storage'
-import { Trash2, FolderOpen, Download, Upload, FileText } from 'lucide-react'
+import { Trash2, FolderOpen, Download, Upload, FileText, Settings } from 'lucide-react'
+import { ProviderSettingsDialog } from '@/app/pages/ProviderSettingsDialog'
 
 export default function ProjectHubPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const newProject = useStore(state => state.newProject)
   const hydrateProject = useStore(state => state.hydrateProject)
   const [projects, setProjects] = useState<ProjectMetadata[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [storageType, setStorageType] = useState<string>('indexedDB')
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [showProviderSettings, setShowProviderSettings] = useState(false)
+
+  // Check if we should open provider settings from navigation state
+  useEffect(() => {
+    const state = location.state as { openProviderSettings?: boolean } | null
+    if (state?.openProviderSettings) {
+      setShowProviderSettings(true)
+      // Clear the state to prevent reopening on refresh
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+  }, [location, navigate])
 
   const loadProjects = useCallback(async () => {
     setIsLoading(true)
@@ -132,6 +145,17 @@ export default function ProjectHubPage() {
               {loadError}
             </p>
           )}
+
+          {/* Provider Settings Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowProviderSettings(true)}
+            className="mt-4"
+          >
+            <Settings className="h-4 w-4 mr-2" />
+            Provider Settings
+          </Button>
         </div>
 
         <div className="space-y-4">
@@ -222,6 +246,12 @@ export default function ProjectHubPage() {
           </div>
         </div>
       </div>
+
+      {/* Provider Settings Dialog */}
+      <ProviderSettingsDialog
+        open={showProviderSettings}
+        onClose={() => setShowProviderSettings(false)}
+      />
     </div>
   )
 }

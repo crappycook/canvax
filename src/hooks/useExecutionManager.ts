@@ -3,8 +3,9 @@ import type { Edge, Node } from '@xyflow/react'
 import { useStore } from '@/state/store'
 import { type LLMClient } from '@/services/llmClient'
 import { collectUpstreamContext, collectUpstreamContextSinglePath } from '@/algorithms/collectUpstreamContext'
-import { formatError } from '@/types/errors'
+import { formatError, createProviderNotFoundError } from '@/types/errors'
 import type { ChatMessage, ChatNodeData } from '@/types'
+import { findProviderByModel } from '@/config/llmProviders'
 
 export interface ExecutionManager {
   isRunning: boolean
@@ -159,7 +160,26 @@ export function useExecutionManager(llmClient: LLMClient): ExecutionManager {
     abortControllersRef.current.set(nodeId, abortController)
 
     try {
-      // 6. Build complete message array: upstream context + current prompt
+      // 6. Get provider information for error context
+      const selectedModel = nodeData.model || state.settings.defaultModel
+      const provider = findProviderByModel(selectedModel)
+      
+      // Check if provider is available
+      if (!provider) {
+        const providerError = createProviderNotFoundError(selectedModel)
+        const errorMessage = JSON.stringify(providerError)
+        
+        state.setNodeStatus(responseNodeId, 'error')
+        state.updateNode(responseNodeId, { error: errorMessage })
+        state.setExecutionResult(responseNodeId, { success: false, error: errorMessage })
+        
+        state.setNodeStatus(nodeId, 'error')
+        state.setExecutionResult(nodeId, { success: false, error: errorMessage })
+        
+        throw new Error(providerError.message)
+      }
+
+      // 7. Build complete message array: upstream context + current prompt
       // Context messages are already deduplicated and in topological order
       const completeMessages = [
         ...context.messages,
@@ -168,7 +188,7 @@ export function useExecutionManager(llmClient: LLMClient): ExecutionManager {
 
       const response = await llmClient.generate(
         {
-          model: nodeData.model || state.settings.defaultModel,
+          model: selectedModel,
           messages: completeMessages,
           temperature: nodeData.temperature ?? state.settings.temperature,
           maxTokens: nodeData.maxTokens ?? state.settings.maxTokens,
@@ -182,21 +202,21 @@ export function useExecutionManager(llmClient: LLMClient): ExecutionManager {
         content: response.content,
         createdAt: Date.now(),
         metadata: {
-          model: nodeData.model || state.settings.defaultModel,
+          model: selectedModel,
         }
       }
 
-      // 7. Write LLM response to response node (not input node)
+      // 8. Write LLM response to response node (not input node)
       state.addMessageToNode(responseNodeId, assistantMessage)
       state.setNodeStatus(responseNodeId, 'success')
       state.setExecutionResult(responseNodeId, { success: true, output: response.content })
 
-      // 8. Keep the prompt in input node (don't clear it)
+      // 9. Keep the prompt in input node (don't clear it)
       // User can manually clear or edit it for next execution
       state.setNodeStatus(nodeId, 'success')
       state.setExecutionResult(nodeId, { success: true, output: response.content })
 
-      // 9. Auto-hide success status after 2 seconds
+      // 10. Auto-hide success status after 2 seconds
       setTimeout(() => {
         const currentState = useStore.getState()
         const currentNode = currentState.nodes.find(n => n.id === nodeId)
@@ -213,9 +233,21 @@ export function useExecutionManager(llmClient: LLMClient): ExecutionManager {
         return
       }
 
-      // Format error using the error formatting utility
-      const formattedError = formatError(error, 'Execution failed')
-      const errorMessage = formattedError.message
+      // Get provider information for error context
+      const selectedModel = nodeData.model || state.settings.defaultModel
+      const provider = findProviderByModel(selectedModel)
+      
+      // Format error with provider context
+      const formattedError = formatError(
+        error, 
+        'Execution failed',
+        provider?.id,
+        provider?.name,
+        provider?.isCustom
+      )
+      
+      // Serialize the error object for storage
+      const errorMessage = JSON.stringify(formattedError)
 
       // Set error on response node (not input node)
       state.setNodeStatus(responseNodeId, 'error')

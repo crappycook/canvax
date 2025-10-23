@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { AlertCircle, Play, Square } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { ModelSelector } from '@/components/ModelSelector'
 import { PromptEditor } from '@/components/PromptEditor'
@@ -20,6 +21,7 @@ export const HybridNodeContent = memo(function HybridNodeContent({
 }: HybridNodeContentProps) {
   const promptEditorRef = useRef<HTMLTextAreaElement>(null)
   const updateNode = useStore(state => state.updateNode)
+  const navigate = useNavigate()
 
   // Local state for immediate UI updates
   const [localPrompt, setLocalPrompt] = useState(data.prompt || '')
@@ -63,6 +65,11 @@ export const HybridNodeContent = memo(function HybridNodeContent({
     stop()
   }, [stop])
 
+  const handleOpenSettings = useCallback(() => {
+    // Navigate to Project Hub where provider settings can be accessed
+    navigate('/')
+  }, [navigate])
+
   // Handle Escape key to cancel execution
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -90,6 +97,7 @@ export const HybridNodeContent = memo(function HybridNodeContent({
           value={data.model}
           onValueChange={handleModelChange}
           disabled={isRunning}
+          onOpenSettings={handleOpenSettings}
         />
       </div>
 

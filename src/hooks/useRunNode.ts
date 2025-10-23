@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useStore } from '@/state/store'
-import { useExecutionManager } from './useExecutionManager'
+import { useExecutionManager } from '@/hooks/useExecutionManager'
 import { LLMClient } from '@/services/llmClient'
 import type { ChatNodeData } from '@/types'
 import { findProviderByModel } from '@/config/llmProviders'

@@ -7,7 +7,7 @@ import { MarkdownRenderer } from '@/components/MarkdownRenderer'
 import { ErrorDisplay } from './ErrorDisplay'
 import { useStore } from '@/state/store'
 import { useRunNode } from '@/hooks/useRunNode'
-import { formatError } from '@/types/errors'
+import { parseError } from '@/types/errors'
 import type { ChatNodeData } from '@/types'
 
 // Threshold for enabling virtual scrolling (characters)
@@ -172,7 +172,7 @@ export const ResponseNodeContent = memo(function ResponseNodeContent({
 
         {data.status === 'error' && (
           <ErrorDisplay
-            error={data.error ? formatError(data.error) : formatError('An error occurred')}
+            error={data.error ? parseError(data.error) : parseError('An error occurred')}
             onRetry={handleRetry}
           />
         )}

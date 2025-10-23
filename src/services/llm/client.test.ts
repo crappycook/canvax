@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { LLMClient } from './client'
-import { useStore } from '@/state/store'
 import * as llmProviders from '@/config/llmProviders'
 
 // Mock the config module

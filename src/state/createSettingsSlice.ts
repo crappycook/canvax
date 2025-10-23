@@ -14,17 +14,17 @@ export interface SettingsSlice {
     predefinedProviders: PredefinedProviderState
     customProviders: CustomProviderConfig[]
   }
-  
+
   updateSettings: (updates: Partial<SettingsSlice['settings']>) => void
   setApiKey: (provider: string, key: string) => void
   removeApiKey: (provider: string) => void
   resetSettings: () => void
-  
+
   // Predefined provider methods
   setPredefinedProviderEnabled: (providerId: string, enabled: boolean) => void
   setPredefinedProviderApiKey: (providerId: string, apiKey: string) => void
   removePredefinedProviderApiKey: (providerId: string) => void
-  
+
   // Custom provider methods
   addCustomProvider: (config: Omit<CustomProviderConfig, 'id' | 'createdAt' | 'updatedAt'>) => void
   updateCustomProvider: (id: string, updates: Partial<CustomProviderConfig>) => void
@@ -99,38 +99,47 @@ export const createSettingsSlice: StateCreator<SettingsSlice> = (set, get) => ({
 
   // Predefined provider methods
   setPredefinedProviderEnabled: (providerId, enabled) => {
-    set((state) => ({
-      settings: {
-        ...state.settings,
-        predefinedProviders: {
-          ...state.settings.predefinedProviders,
-          [providerId]: {
-            ...state.settings.predefinedProviders[providerId],
-            enabled
+    set((state) => {
+      const predefinedProviders = state.settings.predefinedProviders || {}
+      const currentProvider = predefinedProviders[providerId] || {}
+      return {
+        settings: {
+          ...state.settings,
+          predefinedProviders: {
+            ...predefinedProviders,
+            [providerId]: {
+              ...currentProvider,
+              enabled
+            }
           }
         }
       }
-    }))
+    })
   },
 
   setPredefinedProviderApiKey: (providerId, apiKey) => {
-    set((state) => ({
-      settings: {
-        ...state.settings,
-        predefinedProviders: {
-          ...state.settings.predefinedProviders,
-          [providerId]: {
-            ...state.settings.predefinedProviders[providerId],
-            apiKey
+    set((state) => {
+      const predefinedProviders = state.settings.predefinedProviders || {}
+      const currentProvider = predefinedProviders[providerId] || {}
+      return {
+        settings: {
+          ...state.settings,
+          predefinedProviders: {
+            ...predefinedProviders,
+            [providerId]: {
+              ...currentProvider,
+              apiKey
+            }
           }
         }
       }
-    }))
+    })
   },
 
   removePredefinedProviderApiKey: (providerId) => {
     set((state) => {
-      const providerState = state.settings.predefinedProviders[providerId]
+      const predefinedProviders = state.settings.predefinedProviders || {}
+      const providerState = predefinedProviders[providerId]
       if (!providerState) return state
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -139,7 +148,7 @@ export const createSettingsSlice: StateCreator<SettingsSlice> = (set, get) => ({
         settings: {
           ...state.settings,
           predefinedProviders: {
-            ...state.settings.predefinedProviders,
+            ...predefinedProviders,
             [providerId]: restProviderState
           }
         }

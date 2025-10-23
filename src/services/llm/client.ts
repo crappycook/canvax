@@ -244,7 +244,7 @@ export class LLMClient {
       throw new LLMError(
         LLMErrorCode.MODEL_NOT_FOUND,
         `Model ${request.model} not found in any registered provider`,
-        { retryable: false }
+        { retryable: false, providerId: undefined }
       )
     }
 
@@ -258,7 +258,7 @@ export class LLMClient {
         throw new LLMError(
           LLMErrorCode.API_KEY_MISSING,
           `API key required for provider ${provider.name}`,
-          { retryable: false }
+          { retryable: false, providerId: provider.id }
         )
       }
 
@@ -272,16 +272,27 @@ export class LLMClient {
       try {
         return await adapter.generate(request, completeOptions)
       } catch (error) {
-        // If it's already an LLMError, rethrow it
+        // If it's already an LLMError, ensure it has provider context
         if (error instanceof LLMError) {
+          // Add provider ID if not already set
+          if (!error.providerId) {
+            throw new LLMError(
+              error.code,
+              error.message,
+              {
+                ...error,
+                providerId: provider.id,
+              }
+            )
+          }
           throw error
         }
 
-        // Otherwise wrap it
+        // Otherwise wrap it with provider context
         throw new LLMError(
           LLMErrorCode.UNKNOWN,
           error instanceof Error ? error.message : 'Unknown error occurred',
-          { retryable: false, providerError: error }
+          { retryable: false, providerId: provider.id, providerError: error }
         )
       }
     }
@@ -312,7 +323,7 @@ export class LLMClient {
       throw new LLMError(
         LLMErrorCode.MODEL_NOT_FOUND,
         `Model ${request.model} not found in any registered provider`,
-        { retryable: false }
+        { retryable: false, providerId: undefined }
       )
     }
 
@@ -326,7 +337,7 @@ export class LLMClient {
         throw new LLMError(
           LLMErrorCode.API_KEY_MISSING,
           `API key required for provider ${provider.name}`,
-          { retryable: false }
+          { retryable: false, providerId: provider.id }
         )
       }
 
@@ -340,16 +351,27 @@ export class LLMClient {
       try {
         return await adapter.streamGenerate(request, onChunk, completeOptions)
       } catch (error) {
-        // If it's already an LLMError, rethrow it
+        // If it's already an LLMError, ensure it has provider context
         if (error instanceof LLMError) {
+          // Add provider ID if not already set
+          if (!error.providerId) {
+            throw new LLMError(
+              error.code,
+              error.message,
+              {
+                ...error,
+                providerId: provider.id,
+              }
+            )
+          }
           throw error
         }
 
-        // Otherwise wrap it
+        // Otherwise wrap it with provider context
         throw new LLMError(
           LLMErrorCode.UNKNOWN,
           error instanceof Error ? error.message : 'Unknown error occurred',
-          { retryable: false, providerError: error }
+          { retryable: false, providerId: provider.id, providerError: error }
         )
       }
     }

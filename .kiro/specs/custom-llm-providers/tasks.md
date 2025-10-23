@@ -95,8 +95,8 @@
   - Add "Delete" button that triggers deletion flow
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 8. Create Custom Provider Dialog component
-- [ ] 8.1 Create dialog component structure
+- [x] 8. Create Custom Provider Dialog component
+- [x] 8.1 Create dialog component structure
   - Create `src/components/CustomProviderDialog.tsx`
   - Set up dialog with header, content, and footer sections
   - Add form state management for provider configuration
@@ -104,7 +104,7 @@
   - Support both add and edit modes based on `provider` prop
   - _Requirements: 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 8.2 Implement form fields
+- [x] 8.2 Implement form fields
   - Add provider name input field with validation
   - Add API type dropdown (OpenAI, Anthropic, Google, Custom)
   - Add API key password input field with validation
@@ -112,7 +112,7 @@
   - Add enable provider toggle switch
   - _Requirements: 4.3, 4.4, 5.1, 5.2, 5.3_
 
-- [ ] 8.3 Implement models management section
+- [x] 8.3 Implement models management section
   - Create `ModelsManager` component for adding/removing models
   - Display list of existing models with remove buttons
   - Add input fields for new model ID and label
@@ -120,7 +120,7 @@
   - Validate at least one model is defined
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
 
-- [ ] 8.4 Implement form validation
+- [x] 8.4 Implement form validation
   - Validate provider name is not empty and unique
   - Validate base URL is valid URL format
   - Validate API key is not empty
@@ -129,7 +129,7 @@
   - Disable confirm button when form is invalid
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 8.5 Implement connection testing
+- [x] 8.5 Implement connection testing
   - Add "Test Connection" button
   - Implement `handleTestConnection` function
   - Call custom provider adapter's `validateApiKey` method
@@ -137,21 +137,21 @@
   - Display success/error result with badge or message
   - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5_
 
-- [ ] 8.6 Implement save and cancel handlers
+- [x] 8.6 Implement save and cancel handlers
   - Implement `handleSave` function to call `onSave` callback
   - Implement `handleCancel` function to close dialog
   - Support both add and edit modes
   - Clear form state on close
   - _Requirements: 6.1, 6.2, 6.4, 8.3, 8.4_
 
-- [ ] 9. Integrate Provider Settings into Project Hub Page
+- [x] 9. Integrate Provider Settings into Project Hub Page
   - Add "Provider Settings" button to `src/app/pages/ProjectHubPage.tsx` header
   - Add state for showing/hiding provider settings dialog
   - Import and render `ProviderSettingsDialog` component
   - Position button prominently in the page header or navigation
   - _Requirements: 2.1, 2.2, 2.4_
 
-- [ ] 10. Implement delete custom provider flow
+- [x] 10. Implement delete custom provider flow
   - Handle "Delete" button click in Custom Provider Card
   - Show confirmation dialog with provider name
   - Call `removeCustomProvider` on confirmation
@@ -159,7 +159,7 @@
   - Refresh provider list after deletion
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
 
-- [ ] 11. Update chat node model selector
+- [x] 11. Update chat node model selector
   - Modify model selector in chat nodes to use `getEnabledProviders()`
   - Display only models from enabled providers
   - Add visual indicator (badge) for custom provider models
@@ -167,7 +167,7 @@
   - Group models by provider if needed
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5_
 
-- [ ] 12. Implement provider error handling
+- [x] 12. Implement provider error handling
   - Extend error handling to include provider context
   - Display provider name in error messages for custom providers
   - Add link to open provider settings from error messages
@@ -175,7 +175,7 @@
   - Handle missing/disabled provider gracefully in chat nodes
   - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5_
 
-- [ ] 13. Add security warnings and validations
+- [x] 13. Add security warnings and validations
   - Display warning about storing API keys in browser storage
   - Recommend HTTPS for custom provider base URLs
   - Warn users if base URL is not HTTPS
@@ -183,7 +183,7 @@
   - Never display full API keys in UI or error messages
   - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5_
 
-- [ ] 14. Implement UI/UX polish
+- [x] 14. Implement UI/UX polish
   - Add tooltips explaining each field in custom provider dialog
   - Add placeholder text for all input fields
   - Display API endpoint path hint below base URL field (e.g., "/chat/completions")
@@ -192,14 +192,14 @@
   - Ensure responsive layout for dialogs and cards
   - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5_
 
-- [ ] 15. Handle provider refresh on settings changes
+- [x] 15. Handle provider refresh on settings changes
   - Subscribe to settings store changes in LLM Client
   - Call `refreshProviders` when predefined or custom providers change
   - Ensure model selector updates when providers change
   - Test that changes persist across page reloads
   - _Requirements: 12.4_
 
-- [ ] 16. Update persistence configuration
+- [x] 16. Update persistence configuration
   - Verify `predefinedProviders` and `customProviders` are included in Zustand persist partialize
   - Test that provider configurations persist to localStorage
   - Test that providers load correctly on app initialization

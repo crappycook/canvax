@@ -1,9 +1,10 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { AlertCircle, Play, Square } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { ModelSelector } from '@/components/ModelSelector'
 import { PromptEditor } from '@/components/PromptEditor'
-import { NodeStatusBadge } from './NodeStatusBadge'
+import { NodeStatusBadge } from '@/canvas/nodes/NodeStatusBadge'
 import { useRunNode } from '@/hooks/useRunNode'
 import { useStore } from '@/state/store'
 import { useDebounce } from '@/hooks/useDebounce'
@@ -20,7 +21,8 @@ export const InputNodeContent = memo(function InputNodeContent({
 }: InputNodeContentProps) {
   const promptEditorRef = useRef<HTMLTextAreaElement>(null)
   const updateNode = useStore(state => state.updateNode)
-  
+  const navigate = useNavigate()
+
   // Local state for immediate UI updates
   const [localPrompt, setLocalPrompt] = useState(data.prompt || '')
 
@@ -63,6 +65,11 @@ export const InputNodeContent = memo(function InputNodeContent({
     stop()
   }, [stop])
 
+  const handleOpenSettings = useCallback(() => {
+    // Navigate to Project Hub where provider settings can be accessed
+    navigate('/')
+  }, [navigate])
+
   // Handle Escape key to cancel execution
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -92,6 +99,7 @@ export const InputNodeContent = memo(function InputNodeContent({
           value={data.model}
           onValueChange={handleModelChange}
           disabled={isRunning}
+          onOpenSettings={handleOpenSettings}
         />
       </div>
 
@@ -139,7 +147,7 @@ export const InputNodeContent = memo(function InputNodeContent({
           </>
         )}
       </Button>
-      
+
       {/* Screen reader status announcement */}
       <div id="execution-status" className="sr-only" aria-live="assertive">
         {isRunning ? 'Node is running' : 'Node is idle'}

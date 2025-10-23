@@ -8,8 +8,9 @@ import {
   AlertTriangle 
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useStore } from '@/state/store'
+import { Badge } from '@/components/ui/badge'
 import { formatError, type NodeError } from '@/types/errors'
+import { useNavigate } from 'react-router-dom'
 
 interface ErrorDisplayProps {
   error: string | NodeError
@@ -26,11 +27,16 @@ function getErrorIcon(errorType: NodeError['type']) {
     case 'api_key_invalid':
       return <Key className="size-5 text-red-600" />
     case 'network_error':
+    case 'connection_failed':
       return <WifiOff className="size-5 text-red-600" />
     case 'rate_limit':
       return <Clock className="size-5 text-orange-600" />
     case 'model_not_found':
+    case 'provider_not_found':
+    case 'provider_disabled':
       return <FileQuestion className="size-5 text-red-600" />
+    case 'invalid_response':
+      return <AlertCircle className="size-5 text-red-600" />
     case 'context_incomplete':
       return <AlertTriangle className="size-5 text-yellow-600" />
     default:
@@ -49,10 +55,18 @@ function getErrorTypeLabel(errorType: NodeError['type']): string {
       return 'Authentication Failed'
     case 'network_error':
       return 'Network Error'
+    case 'connection_failed':
+      return 'Connection Failed'
     case 'rate_limit':
       return 'Rate Limit Exceeded'
     case 'model_not_found':
       return 'Model Not Found'
+    case 'provider_not_found':
+      return 'Provider Not Available'
+    case 'provider_disabled':
+      return 'Provider Disabled'
+    case 'invalid_response':
+      return 'Invalid Response'
     case 'context_incomplete':
       return 'Context Warning'
     default:
@@ -68,7 +82,7 @@ export const ErrorDisplay = memo(function ErrorDisplay({
   onRetry,
   className = '',
 }: ErrorDisplayProps) {
-  const toggleSettings = useStore(state => state.toggleSettings)
+  const navigate = useNavigate()
 
   // Convert string errors to NodeError format
   const nodeError: NodeError = typeof error === 'string' 
@@ -78,20 +92,13 @@ export const ErrorDisplay = memo(function ErrorDisplay({
   const handleActionClick = useCallback(() => {
     if (nodeError.actionHandler) {
       nodeError.actionHandler()
-    } else if (
-      nodeError.type === 'api_key_missing' || 
-      nodeError.type === 'api_key_invalid'
-    ) {
-      // Open settings for API key errors
-      toggleSettings()
+    } else if (nodeError.actionLabel === 'Open Provider Settings') {
+      // Navigate to project hub with provider settings dialog
+      navigate('/', { state: { openProviderSettings: true } })
     }
-  }, [nodeError, toggleSettings])
+  }, [nodeError, navigate])
 
-  const showActionButton = 
-    nodeError.actionLabel || 
-    nodeError.type === 'api_key_missing' || 
-    nodeError.type === 'api_key_invalid'
-
+  const showActionButton = Boolean(nodeError.actionLabel)
   const actionLabel = nodeError.actionLabel || 'Go to Settings'
 
   return (
@@ -106,8 +113,20 @@ export const ErrorDisplay = memo(function ErrorDisplay({
           {getErrorIcon(nodeError.type)}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-red-900">
-            {getErrorTypeLabel(nodeError.type)}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="text-sm font-medium text-red-900">
+              {getErrorTypeLabel(nodeError.type)}
+            </div>
+            {nodeError.providerName && (
+              <Badge variant="outline" className="text-xs border-red-300 text-red-700">
+                {nodeError.providerName}
+              </Badge>
+            )}
+            {nodeError.isCustomProvider && (
+              <Badge variant="secondary" className="text-xs">
+                Custom
+              </Badge>
+            )}
           </div>
           <div className="mt-1 text-sm text-red-700">
             {nodeError.message}

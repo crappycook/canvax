@@ -194,8 +194,11 @@ export class CustomProviderAdapter extends BaseProviderAdapter {
       LLMErrorCode.SERVER_ERROR,
     ].includes(code)
 
+    // Sanitize message to remove any API keys
+    const sanitizedMessage = this.sanitizeErrorMessage(message)
+
     // Include custom provider context in error message
-    const enhancedMessage = `Custom provider (${this.providerId}): ${message}`
+    const enhancedMessage = `Custom provider (${this.providerId}): ${sanitizedMessage}`
 
     return new LLMError(code, enhancedMessage, {
       retryable,
@@ -332,8 +335,11 @@ export class CustomProviderAdapter extends BaseProviderAdapter {
    */
   private enhanceErrorWithContext(error: unknown): Error {
     if (error instanceof Error) {
+      // Sanitize error message to remove any API keys
+      const sanitizedMessage = this.sanitizeErrorMessage(error.message)
+      
       const enhancedError = new Error(
-        `Custom provider (${this.providerId}) at ${this.baseUrl}: ${error.message}`
+        `Custom provider (${this.providerId}) at ${this.baseUrl}: ${sanitizedMessage}`
       )
       enhancedError.stack = error.stack
       // Preserve any additional properties
@@ -341,5 +347,32 @@ export class CustomProviderAdapter extends BaseProviderAdapter {
       return enhancedError
     }
     return error as Error
+  }
+
+  /**
+   * Sanitize error messages to remove API keys
+   * Masks any string that looks like an API key
+   */
+  private sanitizeErrorMessage(message: string): string {
+    // Pattern to match common API key formats
+    // Matches: sk-..., Bearer sk-..., apikey=..., etc.
+    const apiKeyPatterns = [
+      /sk-[a-zA-Z0-9]{20,}/g,           // OpenAI-style keys
+      /Bearer\s+[a-zA-Z0-9_\-\.]{20,}/g, // Bearer tokens
+      /apikey[=:]\s*[a-zA-Z0-9_\-\.]{20,}/gi, // API key parameters
+      /api[_-]?key[=:]\s*[a-zA-Z0-9_\-\.]{20,}/gi, // Various API key formats
+      /token[=:]\s*[a-zA-Z0-9_\-\.]{20,}/gi, // Token parameters
+    ]
+
+    let sanitized = message
+    for (const pattern of apiKeyPatterns) {
+      sanitized = sanitized.replace(pattern, (match) => {
+        // Keep the prefix (like "sk-" or "Bearer ") and mask the rest
+        const prefix = match.match(/^[a-zA-Z_\-]+[=:\s]*/)?.[0] || ''
+        return `${prefix}***`
+      })
+    }
+
+    return sanitized
   }
 }

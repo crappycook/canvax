@@ -76,7 +76,7 @@ describe('nodeTypeUtils', () => {
       expect(nodeType).toBe('hybrid')
     })
 
-    it('should return hybrid for node with downstream and prompt', () => {
+    it('should return input for node with downstream and prompt but no assistant messages', () => {
       const nodeData = createNodeData({ prompt: 'Hello' })
       const edges: Edge[] = [
         { id: 'edge-1', source: 'node-1', target: 'node-2' }
@@ -84,7 +84,7 @@ describe('nodeTypeUtils', () => {
       
       const nodeType = getNodeType('node-1', nodeData, edges)
       
-      expect(nodeType).toBe('hybrid')
+      expect(nodeType).toBe('input')
     })
 
     it('should return hybrid for node with assistant messages but also has prompt', () => {

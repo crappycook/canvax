@@ -1,9 +1,9 @@
 import { type StateCreator } from 'zustand'
 import type { ProjectSnapshot, ChatNodeData, CustomEdgeData } from '@/types'
-import type { CanvasSlice } from './createCanvasSlice'
-import type { NodesSlice } from './createNodesSlice'
-import type { EdgesSlice } from './createEdgesSlice'
-import type { SettingsSlice } from './createSettingsSlice'
+import type { CanvasSlice } from '@/state/createCanvasSlice'
+import type { NodesSlice } from '@/state/createNodesSlice'
+import type { EdgesSlice } from '@/state/createEdgesSlice'
+import type { SettingsSlice } from '@/state/createSettingsSlice'
 import { unifiedStorageService } from '@/services/unifiedStorage'
 
 type RootStateForProject = ProjectSlice & CanvasSlice & NodesSlice & EdgesSlice & SettingsSlice
@@ -148,13 +148,35 @@ export const createProjectSlice: StateCreator<ProjectSlice & CanvasSlice & Nodes
     const state = get() as RootStateForProject
     const projectId =
       `project-${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Date.now()}`
+
+    // Create default chat node with unique ID
+    const nodeId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? `node-${crypto.randomUUID()}`
+      : `node-${Date.now()}`
+
+    // Position node near center of typical viewport (considering node width ~400px)
+    const defaultNode = {
+      id: nodeId,
+      type: 'chat' as const,
+      position: { x: 400, y: 300 },
+      data: {
+        label: 'Chat Node',
+        description: 'Welcome to Canvax',
+        model: state.settings.defaultModel || 'gpt-4o',
+        prompt: '',
+        messages: [],
+        status: 'idle' as const,
+        createdAt: Date.now(),
+      } as ChatNodeData,
+    }
+
     const snapshot = createEmptySnapshot(state, projectId, title)
     const history = createDefaultHistory()
 
     set({
       currentProjectId: projectId,
       snapshot,
-      nodes: [],
+      nodes: [defaultNode] as NodesSlice['nodes'],
       edges: [],
       viewport: DEFAULT_VIEWPORT,
       selection: [],
