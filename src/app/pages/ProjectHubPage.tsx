@@ -34,7 +34,9 @@ export default function ProjectHubPage() {
     setLoadError(null)
     try {
       const projectList = await unifiedStorageService.listProjects()
-      setProjects(projectList)
+      // Sort by updatedAt descending (most recent first)
+      const sortedProjects = projectList.sort((a, b) => b.updatedAt - a.updatedAt)
+      setProjects(sortedProjects)
       setStorageType(unifiedStorageService.getStorageType())
     } catch (error) {
       console.error('Failed to load projects:', error)

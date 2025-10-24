@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useState, type ChangeEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Home, Settings, Save } from 'lucide-react'
 import { useStore } from '@/state/store'
+import { ProviderSettingsDialog } from '@/app/pages/ProviderSettingsDialog'
 
 interface TopBarProps {
   projectId?: string
@@ -16,6 +17,7 @@ export default function TopBar({ projectId }: TopBarProps) {
   const [titleInput, setTitleInput] = useState(projectTitle)
   const [isSaving, setIsSaving] = useState(false)
   const [isLeaving, setIsLeaving] = useState(false)
+  const [showProviderSettings, setShowProviderSettings] = useState(false)
 
   const isUntitledProject = useMemo(() => {
     return projectTitle.trim() === 'Untitled Project'
@@ -138,20 +140,14 @@ export default function TopBar({ projectId }: TopBarProps) {
           <Save className="h-4 w-4" />
         </Button>
 
-        {projectId ? (
-          <Button variant="outline" size="icon" asChild>
-            <Link
-              to={`/project/${projectId}/settings`}
-              aria-label="Open settings"
-            >
-              <Settings className="h-4 w-4" />
-            </Link>
-          </Button>
-        ) : (
-          <Button variant="outline" size="icon" disabled aria-label="Settings unavailable">
-            <Settings className="h-4 w-4" />
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setShowProviderSettings(true)}
+          aria-label="Provider settings"
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
       </div>
 
       {isDialogOpen && (
@@ -201,6 +197,12 @@ export default function TopBar({ projectId }: TopBarProps) {
           </form>
         </div>
       )}
+
+      {/* Provider Settings Dialog */}
+      <ProviderSettingsDialog
+        open={showProviderSettings}
+        onClose={() => setShowProviderSettings(false)}
+      />
     </header>
   )
 }

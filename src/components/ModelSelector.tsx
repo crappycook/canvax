@@ -28,13 +28,20 @@ export const ModelSelector = memo(function ModelSelector({
   onOpenSettings,
 }: ModelSelectorProps) {
   // Subscribe to provider changes to trigger re-render
-  const predefinedProviders = useStore(state => state.settings.predefinedProviders)
-  const customProviders = useStore(state => state.settings.customProviders)
+  const predefinedProviders = useStore(state => state.settings.predefinedProviders) || {}
+  const customProviders = useStore(state => state.settings.customProviders) || []
 
   // Use dynamic function to get enabled providers' models
   // Re-compute when provider settings change
-  const options = useMemo(() => getLLMModels(), [predefinedProviders, customProviders])
-  const enabledProviders = useMemo(() => getEnabledProviders(), [predefinedProviders, customProviders])
+  const options = useMemo(() => {
+    const models = getLLMModels()
+    return models
+  }, [predefinedProviders, customProviders])
+
+  const enabledProviders = useMemo(() => {
+    const providers = getEnabledProviders()
+    return providers
+  }, [predefinedProviders, customProviders])
 
   const selectedModel = useMemo(() => {
     if (value) {

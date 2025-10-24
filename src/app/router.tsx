@@ -1,8 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom'
-import AppShell from './AppShell'
-import ProjectHubPage from './pages/ProjectHubPage'
-import CanvasPage from './pages/CanvasPage'
-import { SettingsModal } from './pages/SettingsModal'
+import AppShell from '@/app/AppShell'
+import ProjectHubPage from '@/app/pages/ProjectHubPage'
+import CanvasPage from '@/app/pages/CanvasPage'
 
 export const router = createBrowserRouter([
   {
@@ -16,12 +15,6 @@ export const router = createBrowserRouter([
       {
         path: 'project/:projectId',
         element: <CanvasPage />,
-        children: [
-          {
-            path: 'settings',
-            element: <SettingsModal />,
-          },
-        ],
       },
     ],
   },

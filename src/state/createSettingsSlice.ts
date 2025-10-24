@@ -228,47 +228,57 @@ export const createSettingsSlice: StateCreator<SettingsSlice> = (set, get) => ({
    * Automatically generates a unique ID and timestamps.
    */
   addCustomProvider: (config) => {
-    set((state) => ({
-      settings: {
-        ...state.settings,
-        customProviders: [
-          ...state.settings.customProviders,
-          {
-            ...config,
-            id: generateUniqueId(),
-            createdAt: Date.now(),
-            updatedAt: Date.now()
-          }
-        ]
+    set((state) => {
+      const customProviders = state.settings.customProviders || []
+      return {
+        settings: {
+          ...state.settings,
+          customProviders: [
+            ...customProviders,
+            {
+              ...config,
+              id: generateUniqueId(),
+              createdAt: Date.now(),
+              updatedAt: Date.now()
+            }
+          ]
+        }
       }
-    }))
+    })
   },
 
   updateCustomProvider: (id, updates) => {
-    set((state) => ({
-      settings: {
-        ...state.settings,
-        customProviders: state.settings.customProviders.map(provider =>
-          provider.id === id
-            ? { ...provider, ...updates, updatedAt: Date.now() }
-            : provider
-        )
+    set((state) => {
+      const customProviders = state.settings.customProviders || []
+      return {
+        settings: {
+          ...state.settings,
+          customProviders: customProviders.map(provider =>
+            provider.id === id
+              ? { ...provider, ...updates, updatedAt: Date.now() }
+              : provider
+          )
+        }
       }
-    }))
+    })
   },
 
   removeCustomProvider: (id) => {
-    set((state) => ({
-      settings: {
-        ...state.settings,
-        customProviders: state.settings.customProviders.filter(p => p.id !== id)
+    set((state) => {
+      const customProviders = state.settings.customProviders || []
+      return {
+        settings: {
+          ...state.settings,
+          customProviders: customProviders.filter(p => p.id !== id)
+        }
       }
-    }))
+    })
   },
 
   getCustomProvider: (id) => {
     const state = get()
-    return state.settings.customProviders.find(p => p.id === id)
+    const customProviders = state.settings.customProviders || []
+    return customProviders.find(p => p.id === id)
   },
 
   getEnabledProviders: () => {

@@ -51,9 +51,20 @@ export function useRunNode(nodeId: string | null): UseRunNodeReturn {
   const requiresApiKey = useMemo(() => {
     if (!provider) return false
     if (!provider.requiresApiKey) return false
-    const apiKey = settings.apiKeys?.[provider.id]
+
+    // For custom providers, check the provider's own apiKey field
+    if (provider.isCustom) {
+      const customProviders = settings.customProviders || []
+      const customProvider = customProviders.find(p => p.id === provider.id)
+      const apiKey = customProvider?.apiKey
+      return !apiKey || apiKey.trim().length === 0
+    }
+
+    // For predefined providers, check settings.apiKeys (legacy) or predefinedProviders
+    const predefinedProviders = settings.predefinedProviders || {}
+    const apiKey = predefinedProviders[provider.id]?.apiKey || settings.apiKeys?.[provider.id]
     return !apiKey || apiKey.trim().length === 0
-  }, [provider, settings.apiKeys])
+  }, [provider, settings.apiKeys, settings.customProviders, settings.predefinedProviders])
 
   const status = nodeData?.status ?? 'idle'
   const isRunning = status === 'running'
