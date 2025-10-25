@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useStore } from '@/state/store'
 import { useExecutionManager } from '@/hooks/useExecutionManager'
-import { LLMClient } from '@/services/llmClient'
+import { llmClient } from '@/services/llm/instance'
 import type { ChatNodeData } from '@/types'
 import { findProviderByModel } from '@/config/llmProviders'
 
@@ -22,8 +22,6 @@ export interface UseRunNodeReturn {
   provider: ReturnType<typeof findProviderByModel>
 }
 
-const llmClient = new LLMClient()
-
 export function useRunNode(nodeId: string | null): UseRunNodeReturn {
   const [lastError, setLastError] = useState<Error | null>(null)
 
@@ -41,8 +39,31 @@ export function useRunNode(nodeId: string | null): UseRunNodeReturn {
   const executionManager = useExecutionManager(llmClient)
 
   useEffect(() => {
-    llmClient.syncApiKeys(settings.apiKeys ?? {})
-  }, [settings.apiKeys])
+    const combinedKeys: Record<string, string> = {}
+
+    // Legacy keys
+    Object.entries(settings.apiKeys ?? {}).forEach(([providerId, key]) => {
+      if (key?.trim()) {
+        combinedKeys[providerId] = key.trim()
+      }
+    })
+
+    // Predefined providers (new schema)
+    Object.entries(settings.predefinedProviders ?? {}).forEach(([providerId, config]) => {
+      if (config?.apiKey?.trim()) {
+        combinedKeys[providerId] = config.apiKey.trim()
+      }
+    })
+
+    // Custom providers (store inline with config)
+    ;(settings.customProviders ?? []).forEach(provider => {
+      if (provider.apiKey?.trim()) {
+        combinedKeys[provider.id] = provider.apiKey.trim()
+      }
+    })
+
+    llmClient.syncApiKeys(combinedKeys)
+  }, [settings.apiKeys, settings.predefinedProviders, settings.customProviders])
 
   const selectedModel = nodeData?.model || settings.defaultModel
 

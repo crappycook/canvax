@@ -26,9 +26,10 @@ import type {
   LLMRequestOptions,
   StreamCallback,
   ValidationResult,
-} from './types'
-import { LLMError, LLMErrorCode } from './errors'
-import { CustomProviderAdapter } from './providers/custom'
+} from '@/services/llm/types'
+import { LLMError, LLMErrorCode } from '@/services/llm/errors'
+import { CustomProviderAdapter } from '@/services/llm/providers/custom'
+import { OpenAIAdapter } from '@/services/llm/providers/openai'
 import { useStore } from '@/state/store'
 
 export type LLMProvider = LLMProviderDefinition
@@ -71,7 +72,7 @@ export class LLMClient {
   constructor() {
     // Register only enabled providers
     this.registerProviders()
-    
+
     // Subscribe to settings changes to refresh providers
     this.subscribeToSettingsChanges()
   }
@@ -87,16 +88,16 @@ export class LLMClient {
   private registerProviders(): void {
     const enabledProviders = getEnabledProviders()
     const state = useStore.getState()
-    
+
     enabledProviders.forEach(provider => {
       // Register provider configuration
       this.providers.set(provider.id, provider)
-      
+
       // Map models to provider
       provider.models.forEach(model => {
         this.modelToProvider.set(model.id, provider)
       })
-      
+
       // Sync API keys from settings store
       if (provider.isCustom) {
         // For custom providers, get API key from the custom provider config
@@ -104,7 +105,7 @@ export class LLMClient {
         if (customProvider?.apiKey) {
           this.apiKeys.set(provider.id, customProvider.apiKey)
         }
-        
+
         // Create and register adapter for custom providers
         if (provider.baseUrl) {
           const adapter = new CustomProviderAdapter(provider.id, provider.baseUrl)
@@ -121,6 +122,17 @@ export class LLMClient {
           this.apiKeys.set(provider.id, state.settings.apiKeys[provider.id])
         }
       }
+
+      // Register built-in adapters for known providers
+      switch (provider.id) {
+        case 'openai': {
+          const adapter = new OpenAIAdapter()
+          this.adapters.set(provider.id, adapter)
+          break
+        }
+        default:
+          break
+      }
     })
   }
 
@@ -133,7 +145,7 @@ export class LLMClient {
     this.providers.clear()
     this.adapters.clear()
     this.modelToProvider.clear()
-    
+
     // Re-register enabled providers
     this.registerProviders()
   }
@@ -145,12 +157,12 @@ export class LLMClient {
     // Track previous state to detect changes
     let previousPredefinedProviders = useStore.getState().settings.predefinedProviders
     let previousCustomProviders = useStore.getState().settings.customProviders
-    
+
     // Subscribe to the entire store and check for provider changes
     this.unsubscribe = useStore.subscribe((state) => {
       const currentPredefinedProviders = state.settings.predefinedProviders
       const currentCustomProviders = state.settings.customProviders
-      
+
       // Check if predefined or custom providers have changed
       if (
         currentPredefinedProviders !== previousPredefinedProviders ||

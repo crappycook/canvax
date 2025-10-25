@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react'
 import type { Edge, Node } from '@xyflow/react'
 import { useStore } from '@/state/store'
-import { type LLMClient } from '@/services/llmClient'
+import { type LLMClient } from '@/services/llm/instance'
 import { collectUpstreamContext, collectUpstreamContextSinglePath } from '@/algorithms/collectUpstreamContext'
 import { formatError, createProviderNotFoundError } from '@/types/errors'
 import type { ChatMessage, ChatNodeData } from '@/types'

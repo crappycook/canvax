@@ -53,7 +53,7 @@ export const PromptEditor = forwardRef<HTMLTextAreaElement, PromptEditorProps>(
         placeholder={placeholder}
         disabled={disabled}
         autoFocus={autoFocus}
-        className="min-h-[80px] resize-none overflow-hidden"
+        className="min-h-[64px] resize-none overflow-hidden"
         rows={3}
       />
     )

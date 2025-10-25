@@ -105,7 +105,7 @@ export const ResponseNodeContent = memo(function ResponseNodeContent({
   }, [edges, nodes, nodeId])
 
   return (
-    <div className="space-y-2 p-4">
+    <div className="space-y-3 p-3">
       {/* Status Indicator - Only show for running and error states */}
       {(data.status === 'running' || data.status === 'error') && (
         <NodeStatusBadge status={data.status} error={data.error} />

@@ -86,7 +86,7 @@ export const InputNodeContent = memo(function InputNodeContent({
   }, [isRunning, stop])
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-3 p-3">
       {/* Status Badge - Only show error state */}
       {data.status === 'error' && (
         <NodeStatusBadge status={data.status} error={data.error} />

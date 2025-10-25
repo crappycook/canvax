@@ -32,10 +32,18 @@ export const ChatNode = memo(({ id, data }: ChatNodeProps) => {
   // Check if this node is highlighted
   const isHighlighted = highlightedNodeIds.has(nodeId)
 
+  const sizeClass =
+    nodeType === 'response'
+      ? 'w-[520px] max-w-[520px]'
+      : nodeType === 'hybrid'
+        ? 'w-[400px] max-w-[420px]'
+        : 'w-[340px] max-w-[360px]'
+
   return (
     <BaseNode
       className={cn(
         'node-chat',
+        sizeClass,
         `node-${nodeType}`,
         `node-${nodeData.status}`,
         isHighlighted && 'node-branch-highlighted'

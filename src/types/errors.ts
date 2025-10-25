@@ -1,3 +1,5 @@
+import { LLMError, LLMErrorCode } from '@/services/llm/errors'
+
 /**
  * Error types for node execution failures
  */
@@ -33,6 +35,23 @@ export interface NodeError {
  */
 type ErrorWithStatus = Error & { status?: number }
 
+const LLM_ERROR_TYPE_MAP: Record<LLMErrorCode, NodeErrorType> = {
+  api_key_invalid: 'api_key_invalid',
+  api_key_missing: 'api_key_missing',
+  rate_limit: 'rate_limit',
+  quota_exceeded: 'rate_limit',
+  model_not_found: 'model_not_found',
+  network_error: 'network_error',
+  timeout: 'network_error',
+  invalid_request: 'invalid_response',
+  server_error: 'unknown',
+  unknown: 'unknown',
+}
+
+function mapLLMErrorCodeToNodeErrorType(code: LLMErrorCode): NodeErrorType {
+  return LLM_ERROR_TYPE_MAP[code] ?? 'unknown'
+}
+
 /**
  * Formats various error types into a structured NodeError format
  * @param error - The error to format (can be Error, string, or unknown)
@@ -49,6 +68,77 @@ export function formatError(
   providerName?: string,
   isCustomProvider?: boolean
 ): NodeError {
+  if (error instanceof LLMError) {
+    const resolvedProviderId = error.providerId ?? providerId
+    const resolvedProviderName = providerName
+    const type = mapLLMErrorCodeToNodeErrorType(error.code)
+    const providerContext = resolvedProviderName ? ` (${resolvedProviderName})` : ''
+
+    let message: string
+    let actionLabel: string | undefined
+
+    switch (error.code) {
+      case LLMErrorCode.API_KEY_INVALID:
+        message = resolvedProviderName
+          ? `Authentication failed for ${resolvedProviderName}. Please confirm your API key.`
+          : 'Authentication failed. Please confirm your API key.'
+        actionLabel = 'Open Provider Settings'
+        break
+      case LLMErrorCode.API_KEY_MISSING:
+        message = resolvedProviderName
+          ? `${resolvedProviderName} requires an API key before this node can run.`
+          : 'API key is missing. Please add your API key in settings.'
+        actionLabel = 'Open Provider Settings'
+        break
+      case LLMErrorCode.QUOTA_EXCEEDED:
+        message = resolvedProviderName
+          ? `Quota exceeded for ${resolvedProviderName}. Check your plan or retry later.`
+          : 'API quota exceeded. Please check your account limits.'
+        break
+      case LLMErrorCode.MODEL_NOT_FOUND:
+        message = resolvedProviderName
+          ? `The selected model is not available on ${resolvedProviderName}. Please choose another model.`
+          : 'The selected model is not available. Please choose another model.'
+        break
+      case LLMErrorCode.RATE_LIMIT:
+        message = resolvedProviderName
+          ? `Rate limit reached on ${resolvedProviderName}. Please wait a moment before retrying.`
+          : 'Rate limit reached. Please wait a moment before retrying.'
+        break
+      case LLMErrorCode.NETWORK_ERROR:
+      case LLMErrorCode.TIMEOUT:
+        message = resolvedProviderName
+          ? `Network issue while contacting ${resolvedProviderName}. Check your connection and retry.`
+          : 'Network issue detected. Check your connection and retry.'
+        break
+      case LLMErrorCode.INVALID_REQUEST:
+        message = resolvedProviderName
+          ? `The request was rejected by ${resolvedProviderName}. Please review your prompt or parameters.`
+          : 'The request was rejected. Please review your prompt or parameters.'
+        break
+      case LLMErrorCode.SERVER_ERROR:
+        message = resolvedProviderName
+          ? `Server error from ${resolvedProviderName}. Please try again shortly.`
+          : 'Server error. Please try again shortly.'
+        break
+      default:
+        message = context
+          ? `${context}${providerContext}: ${error.getUserMessage()}`
+          : `${error.getUserMessage()}${providerContext}`
+        break
+    }
+
+    return {
+      type,
+      message,
+      retryable: error.retryable,
+      providerId: resolvedProviderId,
+      providerName: resolvedProviderName,
+      isCustomProvider,
+      actionLabel,
+    }
+  }
+
   // Handle string errors
   if (typeof error === 'string') {
     return {

@@ -1,6 +1,7 @@
 # Milestone A · Canvas MVP
 
 ## Phase 1 · App Skeleton & State
+
 - [x] 初始化应用外壳与路由结构\
       创建 `AppShell`, `ProjectHubPage`, `CanvasPage`, `SettingsModal` 框架，配置 `createBrowserRouter`（`/`, `/project/:projectId`, `/project/:projectId/settings`）。\
       ✅ 验证：在开发环境访问三个路由，确保 modal 路由可以在同一路径下覆盖渲染。
@@ -12,6 +13,7 @@
       ✅ 验证：单元测试覆盖 `collectUpstreamContext`（拓扑遍历 & 去重）与 `storage` fallback 逻辑。
 
 ## Phase 2 · Project Hub & Persistence
+
 - [x] IndexedDB 项目存储与回退方案\
       在 `storage` 内实现 IndexedDB 读写，失败时降级为 File System 导入/导出；注入到 ProjectStore。\
       ✅ 验证：新建项目→保存→刷新→自动恢复；关闭 IndexedDB（DevTools）后仍可导出/导入 JSON。
@@ -20,6 +22,7 @@
       ✅ 验证：交互均可通过键盘操作，空状态展示引导。
 
 ## Phase 3 · Canvas Runtime Loop
+
 - [x] React Flow Canvas 基础集成\
       搭建 `ReactFlowCanvas` 组件，注册 `nodeTypes/edgeTypes`，实现 `handleNodesChange/EdgesChange/Connect` 与 `validateNoCycle`。\
       ✅ 验证：新增节点、连线、撤销、重做；检测自环时弹出 toast。
@@ -34,6 +37,7 @@
       ✅ 验证：mock 失败响应时，错误信息可读、retry 后恢复正常。
 
 ## Phase 3.1 · 对话分支（Conversation Branching）
+
 - [ ] Response 节点追问功能\
       在 `ResponseNodeContent` 添加"Continue Conversation"按钮，点击后自动创建新的 Input 节点和 Response 节点，形成对话链。\
       ✅ 验证：点击按钮后，新 Input 节点自动连接到当前 Response 节点；新 Response 节点连接到新 Input 节点；节点位置自动布局在下方。
@@ -48,6 +52,7 @@
       ✅ 验证：选中分支节点时，Inspector 显示完整路径；点击路径节点可聚焦到对应节点。
 
 ## Phase 4 · Settings, Persistence & UX Polish
+
 - [x] 设置 Modal + WebCrypto\
       实现 API Key 加密存储、默认模型/语言配置，缺省时阻止运行并提示。\
       ✅ 验证：保存后密钥以密文写入存储；清除设置会同步画布状态。
@@ -59,6 +64,7 @@
       ✅ 验证：通过键盘完成创建→连线→运行→保存环节；对比度达到 WCAG AA。
 
 ## Phase 5 · Quality Gates
+
 - [x] 编写关键逻辑单元测试\
       覆盖 `validateNoCycle`, `collectUpstreamContext`, `RuntimeSlice.runNext`, `ProjectSlice.deriveSnapshot/hydrateProject`。\
       ✅ 验证：`pnpm test`（Vitest）在 CI & 本地通过。\
@@ -73,6 +79,7 @@
 # Milestone B · P1 Enhancements
 
 ## Phase 1 · Canvas UX
+
 - [ ] Markdown 渲染与消息虚拟化\
       引入 `@tanstack/react-virtual`（或同等库）渲染长列表，整合 `remark`/`rehype` 处理 Markdown。\
       ✅ 验证：100 条消息仍保持 >55 FPS；代码块高亮正确。
@@ -81,6 +88,7 @@
       ✅ 验证：迷你地图节点位置同步；快捷键缩放与控件缩放一致。
 
 ## Phase 2 · 内容导出
+
 - [ ] PNG 导出服务\
       使用 `html-to-image`（或 canvas API）将当前视图导出为 PNG，含背景网格。\
       ✅ 验证：导出图片在 4K 画布下仍清晰；文件下载命名含项目名与时间戳。
@@ -89,6 +97,7 @@
       ✅ 验证：导出 Markdown 段落与节点标题对应；导入 JSON 后画布完全还原。
 
 ## Phase 3 · 模板与快速操作
+
 - [ ] 模板抽屉\
       设计模板数据结构，支持创建/应用模板（将模板节点合并到当前画布）。\
       ✅ 验证：应用模板不会覆盖现有节点 ID；撤销可恢复应用前状态。
@@ -99,6 +108,7 @@
 ---
 
 # Milestone C · P2 Roadmap Prep
+
 - [ ] 并发限制与运行队列 UI\
       在 `RuntimeSlice` 新增 `maxConcurrent` 配置与队列可视化列表。\
       ✅ 验证：设置 `maxConcurrent=1` 时，其余运行任务进入排队状态。
